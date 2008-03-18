@@ -1,0 +1,5 @@
+# -*- tcl -*-
+::xowf::Package initialize 
+set l [expr {[lsearch -exact [ns_conn urlv] admin] + 1 }]
+set path [join [lrange [ns_conn urlv] $l end] /]
+rp_internal_redirect /packages/xowiki/www/admin/$path
