@@ -96,7 +96,7 @@ namespace eval ::xowf {
     }
     return ::$name
   }
-  Context instproc as_graph {} {
+  Context instproc as_graph {{-current_state ""} {-visited ""}} {
     set dot ""
     catch {set dot [::util::which dot]}
     # final ressort for cases, where ::util::which is not available
@@ -108,7 +108,14 @@ namespace eval ::xowf {
       edge \[fontname="Courier"\];
     }]
     foreach s [my available_states] {
-      append result "  state_[namespace tail $s] \[label=\"[$s label]\"\];\n"
+      if {[$s name] eq $current_state} {
+        set color ",color=orange"
+      } elseif {[lsearch -exact $visited [$s name]] > -1} {
+        set color ",color=yellow"
+      } else {
+        set color ""
+      }
+      append result "  state_[$s name] \[label=\"[$s label]\"$color\];\n"
       foreach a [$s actions] {
 	set action [self]::$a
 	set next_state [$action next_state]
@@ -346,6 +353,16 @@ namespace eval ::xowf {
     } else {
       next
     }
+  }
+  WorkflowPage instproc visited_states {} {
+    my instvar item_id
+    foreach atts [db_list [my qn history] {
+      select instance_attributes from xowiki_page_instance p, cr_items i, cr_revisions r 
+      where i.item_id = :item_id and r.item_id = i.item_id and page_instance_id = r.revision_id}] {
+      array set __ia $atts
+      set visited($__ia(wf_current_state)) 1
+    }
+    return [array names visited]
   }
   WorkflowPage instproc footer {} {
     if {[my exists __no_form_page_footer]} {

@@ -69,6 +69,17 @@ namespace eval ::xowiki {
   # ::xowiki::FormField::current_state
   #
   ###########################################################
-  Class FormField::current_state -superclass ::xowiki::FormField::label
+  Class FormField::current_state -superclass ::xowiki::FormField::label -parameter {
+    {as_graph true}
+  }
 
+  FormField::current_state instproc pretty_value {v} {
+    set g ""
+    if {[my as_graph]} {
+      set ctx   [::xowf::Context require [my object]]
+      set graph [$ctx as_graph -current_state $v -visited [[my object] visited_states]]
+      set g "<div style='width: 35%; float: right;'>$graph</div>"
+    }
+    return "[next]$g"
+  }
 }
