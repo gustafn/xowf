@@ -136,7 +136,14 @@ namespace eval ::xowf {
   #
   # State and Action, two base classes for workflow definitions
   #
-  Class State -parameter {
+  Class WorkflowConstruct 
+  WorkflowConstruct instforward property {%[my info parent] object} %proc
+
+  #WorkflowConstruct instproc property {name} {
+  #  [[my info parent] object] property $name
+  #}
+
+  Class State -superclass WorkflowConstruct -parameter {
     {actions ""}
     {view_method ""}
     {form ""}
@@ -146,7 +153,7 @@ namespace eval ::xowf {
   }
 
   #{label "#xowf.form-button-[namespace tail [self]]#"}
-  Class Action -parameter {
+  Class Action -superclass WorkflowConstruct -parameter {
     {next_state ""}
     {roles all}
     {label "[namespace tail [self]]"}
@@ -235,10 +242,9 @@ namespace eval ::xowf {
       foreach {validation_errors category_ids} [next] break
       if {$validation_errors == 0} {
         #my msg "validation ok, action = [::xo::cc serialize]"
-        # todo: we should implement ::xo::cc get_form_parameters]"
 	my array set __ia [my set instance_attributes]
 
-        foreach {name value} [::xo::cc array get form_parameter] {
+        foreach {name value} [::xo::cc get_all_form_parameter] {
           if {[regexp {^__action_(.+)$} $name _ action]} {
             #my msg action=$action
             set ctx [::xowf::Context require [self]]
@@ -284,6 +290,7 @@ namespace eval ::xowf {
     return ""
   }
   WorkflowPage instproc get_form_id {} {
+    #my msg "[my is_wf_instance]"
     my instvar page_template
     if {[my is_wf_instance]} {
       set key __wfi(wf_form_id)
@@ -312,9 +319,15 @@ namespace eval ::xowf {
       # get the initial state from the workflow
       #
       set ctx [::xowf::Context require [self]]
+      foreach {qp_name value} [::xo::cc get_all_query_parameter] {
+        if {[regexp {^p.(.+)$} $qp_name _ name]} {
+          lappend instance_attributes $name $value
+        }
+      }
       lappend instance_attributes \
           wf_current_state [$ctx get_current_state]
-
+      my msg ia=$instance_attributes
+      return $instance_attributes
     } else {
       next
     }
