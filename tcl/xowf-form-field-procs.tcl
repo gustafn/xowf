@@ -30,9 +30,9 @@ namespace eval ::xowiki {
     if {![catch {set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
 		 -workflow_definition [my value]]} errorMsg]} {
       set errorMsg ""
-      foreach s [$ctx available_states]  {set state([$s name])  $s}
-      foreach a [$ctx available_actions] {set action([$a name]) $a}
-      foreach a [$ctx available_actions] {
+      foreach s [$ctx defined State]  {set state([$s name])  $s}
+      foreach a [$ctx defined Action] {set action([$a name]) $a}
+      foreach a [$ctx defined Action] {
         # Are some "next_states" undefined?
         set next_state [$a next_state]
         if {$next_state ne "" && ![info exists state($next_state)]} {
@@ -40,7 +40,7 @@ namespace eval ::xowiki {
 		(valid: [lsort [array names state]])"
         }
       }
-      foreach s [$ctx available_states] {
+      foreach s [$ctx defined State] {
         # Are some "actions" undefined?
         foreach a [$s actions] {
           if {![info exists action($a)]} {

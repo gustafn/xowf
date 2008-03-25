@@ -26,7 +26,7 @@ namespace eval ::xowf {
   }
 
   #
-  # workflow context
+  # Workflow Context
   #
   
   Class Context -parameter {
@@ -34,21 +34,22 @@ namespace eval ::xowf {
     workflow_definition
     object
   }
+  
+  # forward property to the workflow object
+  Context instforward property {%my object} %proc
+
+  # forward form_constraints, view_method and for the to current state object
+  Context instforward get_form_constraints {%my current_state} form_constraints
+  Context instforward get_view_method      {%my current_state} view_method
+  Context instforward form                 {%my current_state} form
+
   Context instproc set_current_state {value} {
     my current_state [self]::$value
   }
   Context instproc get_current_state {} {
     namespace tail [my current_state]
   }
-  Context instproc possible_next_states {} {
-    [my current_state] possible_next_states
-  }
-  Context instproc get_view_method {} {
-    [my current_state] view_method
-  }
-  Context instproc get_form_constraints {} {
-    [my current_state] form_constraints
-  }
+
   Context instproc get_actions {} {
     set actions [list]
     #my msg "for [my current_state] actions '[[my current_state] actions]'"
@@ -57,20 +58,12 @@ namespace eval ::xowf {
     }
     return $actions
   }
-  Context instproc available_actions {} {
+  Context instproc defined {what} {
     set result [list]
-    foreach c [my info children] {if {[$c istype Action]} {lappend result $c}}
+    foreach c [my info children] {if {[$c istype $what]} {lappend result $c}}
     return $result
   }
-  Context instproc available_states {} {
-    set result [list]
-    foreach c [my info children] {if {[$c istype State]} {lappend result $c}}
-    return $result
-  }
-  Context instproc form {} {
-    #my msg "get form '[[my current_state] form]' from state [my current_state]"
-    [my current_state] form
-  }
+
   Context instproc form_id {parent_id} {
     #my msg "get form_id '[my exists form_id]' [my form]"
     if {[my exists form_id]} {return [my set form_id]}
@@ -107,7 +100,7 @@ namespace eval ::xowf {
       node \[fontname="Courier", color=lightblue2, style=filled\];
       edge \[fontname="Courier"\];
     }]
-    foreach s [my available_states] {
+    foreach s [my defined State] {
       if {[$s name] eq $current_state} {
         set color ",color=orange"
       } elseif {[lsearch -exact $visited [$s name]] > -1} {
@@ -133,11 +126,12 @@ namespace eval ::xowf {
     return "<img style='width:100%' src='[[[my object] package_id] package_url]/$ofn'>\n"
   }
 
+
   #
   # State and Action, two base classes for workflow definitions
   #
   Class WorkflowConstruct 
-  WorkflowConstruct instforward property {%[my info parent] object} %proc
+  WorkflowConstruct ad_instforward property {get property} {%[my info parent] object} %proc
 
   #WorkflowConstruct instproc property {name} {
   #  [[my info parent] object] property $name
@@ -160,7 +154,10 @@ namespace eval ::xowf {
     {name  "[namespace tail [self]]"}
   }
   Action instproc activate {obj} {;}
-  namespace export State Action
+
+  Class Property -superclass ::xowiki::FormField -parameter {{name "[namespace tail [self]]"}}
+  Property set abstract 1
+  namespace export State Action Property
   
 
   #
@@ -168,10 +165,9 @@ namespace eval ::xowf {
   #
   Class WorkflowPage
 
-  WorkflowPage instproc is_wf {} {
-    #
-    # Is the current page a workflow page (page, defining a workflow)?
-    #
+  WorkflowPage ad_instproc is_wf {} {
+    Check, if the current page is a workflow page (page, defining a workflow)
+  } {
     if {[my exists __wf(workflow_definition)]} {return 1}
     if {[my property workflow_definition] ne ""} {
       my array set __wf [my instance_attributes]
@@ -180,10 +176,9 @@ namespace eval ::xowf {
     return 0
   }
 
-  WorkflowPage instproc is_wf_instance {} {
-    #
-    # Is the current page a workflow instance (page, refering to a workflow)?
-    #
+  WorkflowPage ad_instproc is_wf_instance {} {
+    Check, if the current page is a workflow instance (page, refering to a workflow)
+  } {
     #my msg  wf_current_state=[my property wf_current_state]-[my info class]
     if {[my property wf_current_state] ne ""} {
       my array set __wfi [[my page_template] instance_attributes]
@@ -192,7 +187,9 @@ namespace eval ::xowf {
     return 0
   }
 
-  WorkflowPage instproc render_form_action_buttons {{-CSSclass ""}} {
+  WorkflowPage ad_instproc render_form_action_buttons {{-CSSclass ""}} {
+    Render the defined actions in the current state with submit buttons
+  } {
     if {[my is_wf_instance]} {
       ::html::div -class form-button {
         set ctx [::xowf::Context require [self]]
@@ -221,7 +218,32 @@ namespace eval ::xowf {
       next
     }
   }
-  WorkflowPage instproc view {{content ""}} {
+  WorkflowPage ad_instproc post_process_edit_fields {dom_root form_field} {
+    post-process form in edit mode to provide feedback in feedback mode
+  } {
+    # In feedback mode, we set the CSS class to correct or incorrect
+    if {[my exists __feedback_mode]} {
+      my unset __feedback_mode
+      ::xo::Page requireCSS /resources/xowf/feedback.css
+      set form [lindex [$dom_root selectNodes "//form"] 0]
+      $form setAttribute class "[$form getAttribute class] feedback"
+      foreach f $form_field {
+        if {![$f exists answer]} continue
+        $f form-widget-CSSclass [expr {[$f answer] eq [$f value] ? "correct" : "incorrect"}] 
+        $f help_text [$f form-widget-CSSclass]
+        foreach n [$dom_root selectNodes "//form//*\[@name='[$f name]'\]"] {
+          set oldCSSClass [expr {[$n hasAttribute class] ? [$n getAttribute class] : ""}]
+          $n setAttribute class [string trim "$oldCSSClass [$f form-widget-CSSclass]"]
+        }
+      }
+    }
+  }
+  WorkflowPage ad_instproc view {{content ""}} {
+    Provide additional view modes:
+       - edit: instead of viewing a page, it is opened in edit mode
+       - view_user_input: show user the provided input
+       - view_user_input_with_feedback: show user the provided input with feedback
+  } {
     # The edit method calls view with an HTML content as argument.
     # To avoid a loop, when "view" is redirected to "edit",
     # we make sure that we only check the redirect on views
@@ -230,8 +252,18 @@ namespace eval ::xowf {
       set ctx [::xowf::Context require [self]]
       set method [$ctx get_view_method]
       if {$method ne "" && $method ne "view"} {
+        my instvar package_id
         #my msg "view redirects to $method in state [$ctx get_current_state]"
-        return [[my package_id] invoke -method $method]
+        switch $method {
+          view_user_input {
+            return [$package_id call [self] edit [list -disable_input_fields 1]]
+          }
+          view_user_input_with_feedback {
+            my set __feedback_mode 1
+            return [$package_id call [self] edit [list -disable_input_fields 1]]
+          }
+          default {return [$package_id invoke -method $method]}
+        }
       } 
     }
     next
@@ -241,18 +273,15 @@ namespace eval ::xowf {
     if {[my is_wf_instance]} {
       foreach {validation_errors category_ids} [next] break
       if {$validation_errors == 0} {
-        #my msg "validation ok, action = [::xo::cc serialize]"
-	my array set __ia [my set instance_attributes]
-
+        #my msg "validation ok"
         foreach {name value} [::xo::cc get_all_form_parameter] {
           if {[regexp {^__action_(.+)$} $name _ action]} {
-            #my msg action=$action
             set ctx [::xowf::Context require [self]]
-            #my msg "action=$action isbj=[my isobject ${ctx}::$action]"
             if {[catch {${ctx}::$action activate [self]} errorMsg]} {
               my msg "error in action: $errorMsg"
             } else {
               set next_state [${ctx}::$action next_state]
+              #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
               if {$next_state ne ""} {
                 $ctx set_current_state $next_state
               }
@@ -265,6 +294,42 @@ namespace eval ::xowf {
     } else {
       next
     }
+  }
+
+  WorkflowPage instproc instantiated_form_fields {} {
+    # Helper method to
+    #  - obtain the field_names from the current form, to
+    #  - create form_field instances from that and to
+    #  - provide the values from the instance attributes into it.
+    foreach {_ field_names} [my field_names_from_form] break
+    set form_fields [my create_form_fields $field_names]
+    my load_values_into_form_fields $form_fields
+    return $form_fields
+  }
+  WorkflowPage ad_instproc solution_set {} {
+    Compute solution set in form of attribute=value pairs
+    based on "answer" attribute of form fields.
+  } {
+    set solutions [list]
+    foreach f [my instantiated_form_fields] {
+      if {![$f exists answer]} continue
+      lappend solutions [$f name]=[$f answer]
+    }
+    return [join [lsort $solutions] ", "]
+  }
+  WorkflowPage ad_instproc answer_is_correct {} {
+    Check, if answer is correct based on "answer" attribute of form fields
+    and provided user input.
+  } {
+    set correct 1
+    foreach f [my instantiated_form_fields] {
+      if {![$f exists answer]} continue
+      if {[$f value] ne [$f answer]} {
+        set correct 0
+        break
+      }
+    }
+    return $correct
   }
   WorkflowPage instproc unset_temporary_instance_variables {} {
     # never save/cache the following variables
@@ -319,14 +384,16 @@ namespace eval ::xowf {
       # get the initial state from the workflow
       #
       set ctx [::xowf::Context require [self]]
+      foreach p [$ctx defined ::xowiki::FormField] {set __ia([$p name]) [$p default]}
       foreach {qp_name value} [::xo::cc get_all_query_parameter] {
         if {[regexp {^p.(.+)$} $qp_name _ name]} {
-          lappend instance_attributes $name $value
+          set __ia($name) $value
         }
       }
-      lappend instance_attributes \
-          wf_current_state [$ctx get_current_state]
-      my msg ia=$instance_attributes
+      # set always the current state to the value from the ctx (initial)
+      set __ia(wf_current_state) [$ctx get_current_state]
+      set instance_attributes [array get __ia]
+      #my msg ia=$instance_attributes,props=[$ctx defined Property]
       return $instance_attributes
     } else {
       next
@@ -377,7 +444,12 @@ namespace eval ::xowf {
     }
     return [array names visited]
   }
-  WorkflowPage instproc footer {} {
+
+  WorkflowPage ad_instproc footer {} {
+    Provide a tailored footer for workflow definition pages and 
+    workflow instance pages containing controls for instantiating
+    forms or providing links to the workflow definition.
+  } {
     if {[my exists __no_form_page_footer]} {
       next
     } else {

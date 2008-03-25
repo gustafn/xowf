@@ -1,0 +1,7 @@
+/* .xowiki-content .correct:after {content: " -- ok";}*/
+form.feedback .correct {border: 1px dotted green;}
+
+/* .xowiki-content .incorrect:after {content: "-- wrong";}*/
+form.feedback .incorrect {border: 1px dotted red;}
+
+form.feedback div.form-required-mark {display:none;}
