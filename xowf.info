@@ -7,12 +7,13 @@
     <initial-install-p>f</initial-install-p>
     <singleton-p>f</singleton-p>
     
-    <version name="0.4d" url="http://openacs.org/repository/download/apm/xowf-0.4d.apm">
+    <version name="0.5d" url="http://openacs.org/repository/download/apm/xowf-0.5d.apm">
         <owner url="mailto:neumann@wu-wien.ac.at">Gustaf Neumann</owner>
         <release-date>2008-03-18</release-date>
         <maturity>0</maturity>
 
-        <provides url="xowf" version="0.4d"/>
+        <provides url="xowf" version="0.5d"/>
+        <requires url="xowiki" version="0.83"/>
 
         <callbacks>
         </callbacks>
