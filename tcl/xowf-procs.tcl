@@ -13,14 +13,17 @@ namespace eval ::xowf {
       -package_key "xowf" -pretty_name "XoWiki Workflow" \
       -superclass ::xowiki::Package
   
-  Package instproc init {} {
+  Package ad_instproc init {} {
+    mixin ::xowf::WorkflowPage to every FormPage
+  } {
     my destroy_on_cleanup; #TODO core?
     # called, whenever package is initialized 
-    # ... nothing yet ....
     next
     ::xowiki::FormPage instmixin add ::xowf::WorkflowPage
   }
-  Package instproc destroy {} {
+  Package ad_instproc destroy {} {
+    remove mixin
+  } {
     ::xowiki::FormPage instmixin delete ::xowf::WorkflowPage
     next
   }
@@ -89,7 +92,7 @@ namespace eval ::xowf {
     }
     return ::$name
   }
-  Context instproc as_graph {{-current_state ""} {-visited ""}} {
+  Context instproc as_graph {{-current_state ""} {-visited ""} {-dpi 96} {-style "width:100%"}} {
     set dot ""
     catch {set dot [::util::which dot]}
     # final ressort for cases, where ::util::which is not available
@@ -97,6 +100,7 @@ namespace eval ::xowf {
     if {$dot eq ""} {return "<font color='red'>Program 'dot' is not available! No graph displayed.</font>"}
     set obj_id [namespace tail [my object]]
     set result [subst {digraph workflow_$obj_id \{
+      dpi = $dpi;
       node \[fontname="Courier", color=lightblue2, style=filled\];
       edge \[fontname="Courier"\];
     }]
@@ -123,7 +127,7 @@ namespace eval ::xowf {
     set f [open $fn w]; puts $f $result; close $f
     exec $dot -Tpng $fn -o $path/$ofn
     file delete $fn
-    return "<img style='width:100%' src='[[[my object] package_id] package_url]/$ofn'>\n"
+    return "<img style='$style' src='[[[my object] package_id] package_url]/$ofn'>\n"
   }
 
 

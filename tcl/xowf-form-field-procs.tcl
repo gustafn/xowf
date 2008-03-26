@@ -18,15 +18,16 @@ namespace eval ::xowiki {
   Class FormField::workflow_definition -superclass ::xowiki::FormField::textarea -parameter {
     {rows 20}
     {cols 80}
+    {dpi 120}
     {validator workflow}
   }
   FormField::workflow_definition instproc as_graph {} {
     set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
-		 -workflow_definition [my value]]
-    return [$ctx as_graph]
+		 -workflow_definition [my value] ]
+    return [$ctx as_graph -dpi [my dpi] -style "max-width: 35%;"]
   }
   FormField::workflow_definition instproc check=workflow {value} {
-    # Do w have a syntax error in the workflow definition?
+    # Do we have a syntax error in the workflow definition?
     if {![catch {set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
 		 -workflow_definition [my value]]} errorMsg]} {
       set errorMsg ""
@@ -60,7 +61,7 @@ namespace eval ::xowiki {
     [my object] do_substitutions 0
     return "<div style='width: 65%; overflow:auto;float: left;'>
 	<pre class='code'>[my value]</pre></div>
-	<div style='width: 33%; float: right;'>[my as_graph]</div><div class='visual-clear'></div>"
+	<div float: right;'>[my as_graph]</div><div class='visual-clear'></div>"
   }
 
 
