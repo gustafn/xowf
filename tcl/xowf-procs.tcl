@@ -233,11 +233,30 @@ namespace eval ::xowf {
       $form setAttribute class "[$form getAttribute class] feedback"
       foreach f $form_field {
         if {![$f exists answer]} continue
-        $f form-widget-CSSclass [expr {[$f answer] eq [$f value] ? "correct" : "incorrect"}] 
+        if {[$f answer] eq [$f value]} {
+          set feedback "correct"
+          if {[$f exists feedback_answer_correct]} {set feedback [$f feedback_answer_correct]}
+        } else {
+          set feedback "correct"
+          if {[$f exists feedback_answer_incorrect]} {set feedback [$f feedback_answer_incorrect]}
+        }
+        $f form-widget-CSSclass $feedback
         $f help_text [$f form-widget-CSSclass]
         foreach n [$dom_root selectNodes "//form//*\[@name='[$f name]'\]"] {
           set oldCSSClass [expr {[$n hasAttribute class] ? [$n getAttribute class] : ""}]
           $n setAttribute class [string trim "$oldCSSClass [$f form-widget-CSSclass]"]
+        }
+      }
+      if {[my answer_is_correct]} {
+        set feedback [my get_from_template feedback_correct]
+      } else {
+        set feedback [my get_from_template feedback_incorrect]
+      }
+      if {$feedback ne ""} {
+        $dom_root appendFromScript {
+          html::div -class feedback {
+            html::t $feedback
+          }
         }
       }
     }
