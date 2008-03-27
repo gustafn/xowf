@@ -6,6 +6,12 @@
   @cvs-id $Id $
 }
 
+# todo:
+# - validation of template and form_constraints
+# - plain wiki pages
+# - Roles
+# - assignment
+
 ::xo::db::require package xowiki
 
 namespace eval ::xowf {
@@ -237,7 +243,7 @@ namespace eval ::xowf {
           set feedback "correct"
           if {[$f exists feedback_answer_correct]} {set feedback [$f feedback_answer_correct]}
         } else {
-          set feedback "correct"
+          set feedback "incorrect"
           if {[$f exists feedback_answer_incorrect]} {set feedback [$f feedback_answer_incorrect]}
         }
         $f form-widget-CSSclass $feedback
@@ -385,8 +391,8 @@ namespace eval ::xowf {
       if {![my exists $key]} {
 	set ctx [::xowf::Context require [self]]
 	my set $key [$ctx form_id [my parent_id]]
-	# TODO handle case, when form_id == 0
       }
+      # TODO handle case, when form_id == 0
       set form_id [my set $key]
 
       # be sure, to instantiate as well page_template, some procs assume this

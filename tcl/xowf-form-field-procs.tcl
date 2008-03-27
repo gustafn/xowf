@@ -19,8 +19,8 @@ namespace eval ::xowiki {
     {rows 20}
     {cols 80}
     {dpi 120}
-    {validator workflow}
-  }
+  } -extend_slot validator workflow
+
   FormField::workflow_definition instproc as_graph {} {
     set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
 		 -workflow_definition [my value] ]
@@ -83,4 +83,26 @@ namespace eval ::xowiki {
     }
     return "[next]$g"
   }
+
+
+  ###########################################################
+  #
+  # ::xowiki::FormField::form
+  #
+  ###########################################################
+
+  Class FormField::form -superclass FormField::richtext -parameter {
+    {height 200}
+  } -extend_slot validator form
+
+  FormField::form instproc check=form {value} {
+    set form $value
+    my msg form=$form
+    dom parse -simple -html $form doc
+    $doc documentElement root
+    
+    return [expr {[$root nodeName] eq "form"}]
+  }
+  
+  ::xotcl::Object log [ FormField::form serialize]
 }
