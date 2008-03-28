@@ -103,6 +103,16 @@ namespace eval ::xowiki {
     
     return [expr {[$root nodeName] eq "form"}]
   }
-  
-  ::xotcl::Object log [ FormField::form serialize]
+
+  ###########################################################
+  #
+  # ::xowiki::FormField::form
+  #
+  ###########################################################
+
+  Class FormField::form_constraints -superclass FormField::textarea -parameter {
+    {rows 5}
+  } -extend_slot validator form_constraints
+  # the form_constraints checker is defined already on the ::xowiki::Page level
+
 }
