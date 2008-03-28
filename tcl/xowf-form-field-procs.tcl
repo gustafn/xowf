@@ -106,7 +106,7 @@ namespace eval ::xowiki {
 
   ###########################################################
   #
-  # ::xowiki::FormField::form
+  # ::xowiki::FormField::form_constraints
   #
   ###########################################################
 
