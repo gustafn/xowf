@@ -8,7 +8,7 @@
 
 # todo:
 # - validation of template and form_constraints DONE
-# - plain wiki pages
+# - plain wiki pages DONE
 # - Roles
 # - assignment
 
