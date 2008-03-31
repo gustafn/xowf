@@ -7,7 +7,7 @@
 }
 
 # todo:
-# - validation of template and form_constraints
+# - validation of template and form_constraints DONE
 # - plain wiki pages
 # - Roles
 # - assignment
@@ -46,6 +46,7 @@ namespace eval ::xowf {
   
   # forward property to the workflow object
   Context instforward property {%my object} %proc
+  Context instforward set_property {%my object} %proc
 
   # forward form_constraints, view_method and for the to current state object
   Context instforward get_form_constraints {%my current_state} form_constraints
@@ -107,8 +108,10 @@ namespace eval ::xowf {
     set obj_id [namespace tail [my object]]
     set result [subst {digraph workflow_$obj_id \{
       dpi = $dpi;
-      node \[fontname="Courier", color=lightblue2, style=filled\];
-      edge \[fontname="Courier"\];
+      node \[shape=doublecircle, margin=0.001, fontsize=8, fixedsize=1, width=0.4, style=filled\]; start;
+      node \[shape=ellipse, fontname="Courier", color=lightblue2, style=filled, 
+	fixedsize=0, fontsize=10, margin=0.06\];
+      edge \[fontname="Courier", fontsize=9\];
     }]
     foreach s [my defined State] {
       if {[$s name] eq $current_state} {
@@ -126,6 +129,7 @@ namespace eval ::xowf {
 	append result "  state_[namespace tail $s] -> state_$next_state \[label=\"$a\"\];\n"	
       }
     }
+    append result "start->state_initial;"
     append result "\}\n"
     set path [acs_package_root_dir xowf]/www/
     set fn $path/g.dot
@@ -141,11 +145,8 @@ namespace eval ::xowf {
   # State and Action, two base classes for workflow definitions
   #
   Class WorkflowConstruct 
-  WorkflowConstruct ad_instforward property {get property} {%[my info parent] object} %proc
-
-  #WorkflowConstruct instproc property {name} {
-  #  [[my info parent] object] property $name
-  #}
+  WorkflowConstruct ad_instforward property     {get property} {%[my info parent] object} %proc
+  WorkflowConstruct ad_instforward set_property {set property} {%[my info parent] object} %proc
 
   Class State -superclass WorkflowConstruct -parameter {
     {actions ""}
@@ -436,11 +437,15 @@ namespace eval ::xowf {
     }
     return [array get __c]
   }
-  WorkflowPage instproc merge_constraints {c1 c2} {
+  WorkflowPage instproc merge_constraints {c1 args} {
+    # Load into the base_constraints c1 the constraints from the argument list.
+    # The first constraints have the lowest priority
     array set __c1 [my constraints_as_array $c1]
-    foreach {att value} [my constraints_as_array $c2] {
-      set key __c1($att)
-      if {[info exists $key]} {append $key ",$value"} else {set $key $value}
+    foreach c2 $args {
+      foreach {att value} [my constraints_as_array $c2] {
+        set key __c1($att)
+        if {[info exists $key]} {append $key ",$value"} else {set $key $value}
+      }
     }
     set result [list]
     foreach {att value} [array get __c1] {lappend result $att:$value}
@@ -448,8 +453,10 @@ namespace eval ::xowf {
   }
   WorkflowPage instproc wfi_merged_form_constraints {constraints_from_form} {
     set ctx [::xowf::Context require [self]]
-    #my msg constraints_form_state=[$ctx get_form_constraints]
-    return [my merge_constraints $constraints_from_form [$ctx get_form_constraints]]
+    set wf_specific_constraints [[my page_template] property form_constraints]
+    set m [my merge_constraints $wf_specific_constraints \
+               $constraints_from_form [$ctx get_form_constraints]]
+    return $m
   }
   WorkflowPage instproc wf_merged_form_constraints {constraints_from_form} {
     return [my merge_constraints $constraints_from_form [my property form_constraints]]
