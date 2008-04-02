@@ -153,6 +153,7 @@ namespace eval ::xowf {
     {view_method ""}
     {form ""}
     {form_constraints ""}
+    {assigned_to}
     {label "[namespace tail [self]]"}
     {name  "[namespace tail [self]]"}
   }
@@ -299,6 +300,11 @@ namespace eval ::xowf {
     next
   }
 
+  WorkflowPage instproc get_assignee {assigned_to} {
+    # todo: resolve assingned_to, currently we just return some user
+    return [my creation_user]
+  }
+
   WorkflowPage instproc get_form_data args {
     if {[my is_wf_instance]} {
       foreach {validation_errors category_ids} [next] break
@@ -313,6 +319,10 @@ namespace eval ::xowf {
               set next_state [${ctx}::$action next_state]
               #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
               if {$next_state ne ""} {
+                if {[${ctx}::$next_state exists assigned_to]} {
+                  my set_property wf_assignee \
+                      [my get_assingee [${ctx}::$next_state assigned_to]]
+                }
                 $ctx set_current_state $next_state
               }
             }
@@ -456,6 +466,7 @@ namespace eval ::xowf {
     set wf_specific_constraints [[my page_template] property form_constraints]
     set m [my merge_constraints $wf_specific_constraints \
                $constraints_from_form [$ctx get_form_constraints]]
+    #my msg merged:$m
     return $m
   }
   WorkflowPage instproc wf_merged_form_constraints {constraints_from_form} {
