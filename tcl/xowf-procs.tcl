@@ -321,7 +321,7 @@ namespace eval ::xowf {
               if {$next_state ne ""} {
                 if {[${ctx}::$next_state exists assigned_to]} {
                   my set_property wf_assignee \
-                      [my get_assingee [${ctx}::$next_state assigned_to]]
+                      [my get_assignee [${ctx}::$next_state assigned_to]]
                 }
                 $ctx set_current_state $next_state
               }
