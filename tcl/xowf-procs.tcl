@@ -9,6 +9,18 @@
 # todo:
 # - validation of template and form_constraints DONE
 # - plain wiki pages DONE
+
+# Man kann auch bspw, mit
+#    State parameter {{form en:ticket} {view_method edit}}
+# die State definition vereinfachen, und auf Ebene der actions
+#    Action parameter {{role admin}}
+# die default rolle von "all" auf "admin" umsetzen und
+#    Action instproc activate {obj} {handle_event $obj [self]}
+# verwenden... Ich sehe zwar gerade, dass derzeit die Opertionen
+# auf State und Action inerhalb eine request-threads unangenehme
+# seiteneffekte haben können, schreibe das aber gleich auf meine
+# todo-liste.
+
 # - Roles
 # - assignment
 
@@ -212,9 +224,17 @@ namespace eval ::xowf {
               my msg "ignoring unknown role '$role'"
               continue
             }
-            set success [::xo::cc role=$role \
-                             -user_id [::xo::cc user_id] \
-                             -package_id [my package_id]]
+            if {$role eq "creator"} {
+              # hmm, requires additional attibute
+              set success [::xo::cc role=$role \
+                               -object [self] \
+                               -user_id [::xo::cc user_id] \
+                               -package_id [my package_id]]
+            } else {
+              set success [::xo::cc role=$role \
+                               -user_id [::xo::cc user_id] \
+                               -package_id [my package_id]]
+            }
             if {$success} break
           }
           if {$success} {
