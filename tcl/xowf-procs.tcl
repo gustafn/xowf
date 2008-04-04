@@ -9,18 +9,6 @@
 # todo:
 # - validation of template and form_constraints DONE
 # - plain wiki pages DONE
-
-# Man kann auch bspw, mit
-#    State parameter {{form en:ticket} {view_method edit}}
-# die State definition vereinfachen, und auf Ebene der actions
-#    Action parameter {{role admin}}
-# die default rolle von "all" auf "admin" umsetzen und
-#    Action instproc activate {obj} {handle_event $obj [self]}
-# verwenden... Ich sehe zwar gerade, dass derzeit die Opertionen
-# auf State und Action inerhalb eine request-threads unangenehme
-# seiteneffekte haben können, schreibe das aber gleich auf meine
-# todo-liste.
-
 # - Roles
 # - assignment
 
@@ -54,6 +42,8 @@ namespace eval ::xowf {
     {current_state "[self]::initial"} 
     workflow_definition
     object
+    {all_roles false}
+    in_role
   }
   
   # forward property to the workflow object
@@ -98,7 +88,26 @@ namespace eval ::xowf {
   }
   Context instproc init {} {
     my destroy_on_cleanup
-    my contains "namespace import -force ::xowf::*\n[my workflow_definition]"
+    my array set handled_roles {}
+    #
+    # We define the classes Action, State and Property per workflow
+    # instance.  This has the advantage that we can provide instprocs
+    # or parameters per workflow definition without the danger to
+    # interfere with other Workflows
+    #
+    regsub -all \r\n [my workflow_definition] \n workflow_definition
+    my contains "
+       Class create Action   -superclass ::xowf::Action
+       Class create State    -superclass ::xowf::State
+       Class create Property -superclass ::xowf::Property -set abstract 1
+       $workflow_definition"
+    if {[my all_roles]} {
+      #my msg want.to.create=[my array names handled_roles]
+      foreach role [my array names handled_roles] {
+        Context create [self]-$role -workflow_definition $workflow_definition \
+            -in_role $role -object [my object]
+      }
+    }
   }
   Context proc require {obj} {
     set name $obj-wfctx
@@ -140,6 +149,16 @@ namespace eval ::xowf {
 	if {$next_state eq ""} {set next_state [namespace tail $s]}
 	append result "  state_[namespace tail $s] -> state_$next_state \[label=\"$a\"\];\n"	
       }
+      foreach role [$s set handled_roles] {
+        set role_ctx [self]-$role
+        #my msg exists?role=$role->[self]-$role->[info command [self]-$role]
+        foreach a [${role_ctx}::[$s name] actions] {
+          set action ${role_ctx}::$a
+          set next_state [$action next_state]
+          if {$next_state eq ""} {set next_state [namespace tail $s]}
+          append result "  state_[namespace tail $s] -> state_$next_state \[label=\"$role:$a\"\];\n"	
+        }
+      }
     }
     append result "start->state_initial;"
     append result "\}\n"
@@ -156,9 +175,26 @@ namespace eval ::xowf {
   #
   # State and Action, two base classes for workflow definitions
   #
-  Class WorkflowConstruct 
+  Class WorkflowConstruct -parameter {{handled_roles [list]}}
   WorkflowConstruct ad_instforward property     {get property} {%[my info parent] object} %proc
   WorkflowConstruct ad_instforward set_property {set property} {%[my info parent] object} %proc
+
+  WorkflowConstruct instproc in_role {role configuration} {
+    set ctx [my info parent]
+    set obj [$ctx object]
+    #my msg parent=$obj,cl=[$obj info class],name=[$obj name]
+    if {[$ctx exists in_role]} {
+      set success [expr {[$ctx in_role] eq $role}]
+    } else {
+      set success [$obj check_role $role]
+    }
+    #my msg role-$role->$success
+    my lappend handled_roles $role
+    $ctx set handled_roles($role) 1
+    if {$success} {
+      eval my configure $configuration
+    }
+  }
 
   Class State -superclass WorkflowConstruct -parameter {
     {actions ""}
@@ -181,7 +217,7 @@ namespace eval ::xowf {
 
   Class Property -superclass ::xowiki::FormField -parameter {{name "[namespace tail [self]]"}}
   Property set abstract 1
-  namespace export State Action Property
+  #namespace export State Action Property
   
 
   #
@@ -211,6 +247,24 @@ namespace eval ::xowf {
     return 0
   }
 
+  WorkflowPage instproc check_role {role} {
+    if {[::xo::cc info methods role=$role] eq ""} {
+      my msg "ignoring unknown role '$role'"
+      return 0
+    }
+    if {$role eq "creator"} {
+      # hmm, requires additional attibute
+      return [::xo::cc role=$role \
+                  -object [self] \
+                  -user_id [::xo::cc user_id] \
+                  -package_id [my package_id]]
+    } else {
+      return [::xo::cc role=$role \
+                  -user_id [::xo::cc user_id] \
+                  -package_id [my package_id]]
+    }
+  }
+
   WorkflowPage ad_instproc render_form_action_buttons {{-CSSclass ""}} {
     Render the defined actions in the current state with submit buttons
   } {
@@ -220,21 +274,7 @@ namespace eval ::xowf {
         foreach action [$ctx get_actions] {
           set success 0
           foreach role [$action roles] {
-            if {[::xo::cc info methods role=$role] eq ""} {
-              my msg "ignoring unknown role '$role'"
-              continue
-            }
-            if {$role eq "creator"} {
-              # hmm, requires additional attibute
-              set success [::xo::cc role=$role \
-                               -object [self] \
-                               -user_id [::xo::cc user_id] \
-                               -package_id [my package_id]]
-            } else {
-              set success [::xo::cc role=$role \
-                               -user_id [::xo::cc user_id] \
-                               -package_id [my package_id]]
-            }
+            set success [my check_role $role]
             if {$success} break
           }
           if {$success} {

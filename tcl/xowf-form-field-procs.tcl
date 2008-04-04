@@ -23,6 +23,7 @@ namespace eval ::xowiki {
 
   FormField::workflow_definition instproc as_graph {} {
     set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
+                 -all_roles true -in_role none \
 		 -workflow_definition [my value] ]
     return [$ctx as_graph -dpi [my dpi] -style "max-width: 35%;"]
   }
