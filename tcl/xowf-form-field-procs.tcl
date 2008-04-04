@@ -3,7 +3,6 @@
 
   @author Gustaf Neumann
   @creation-date 2008-03-05
-  @cvs-id $Id $
 }
 
 ::xo::db::require package xowiki
@@ -60,8 +59,9 @@ namespace eval ::xowiki {
   }
   FormField::workflow_definition instproc pretty_value {v} {
     [my object] do_substitutions 0
+    set text [string map [list & "&amp;" < "&lt;" > "&gt;" \" "&quot;" ' "&apos;" @ "&#64;"] [my value]]
     return "<div style='width: 65%; overflow:auto;float: left;'>
-	<pre class='code'>[my value]</pre></div>
+	<pre class='code'>$text</pre></div>
 	<div float: right;'>[my as_graph]</div><div class='visual-clear'></div>"
   }
 
@@ -73,6 +73,19 @@ namespace eval ::xowiki {
   ###########################################################
   Class FormField::current_state -superclass ::xowiki::FormField::label -parameter {
     {as_graph true}
+  }
+  FormField::current_state instproc render_input {} {
+    next
+    if {[my as_graph]} {
+      set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
+		   -all_roles true -in_role none \
+		   -workflow_definition [[my object] wf_property workflow_definition] ]
+      #set ctx   [::xowf::Context require [my object]]
+      set graph [$ctx as_graph -current_state [my value] -visited [[my object] visited_states]]
+      ::html::div -style "width: 35%; float: right;" {
+	::html::t -disableOutputEscaping $graph
+      }
+    }
   }
 
   FormField::current_state instproc pretty_value {v} {
@@ -116,4 +129,94 @@ namespace eval ::xowiki {
   } -extend_slot validator form_constraints
   # the form_constraints checker is defined already on the ::xowiki::Page level
 
+}
+
+
+# 
+# these definitons are only here for the time being 
+#
+namespace eval ::xo::role {
+  Class Role
+  Role instproc get_members args {
+    error "get_members are not implemented for [self]"
+  }
+
+  Role create all
+  all proc is_member {-user_id:required -package_id} {
+    return 1
+  }
+
+  Role create swa 
+  swa proc is_member {-user_id:required -package_id} {
+    return [::xo::cc cache [list acs_user::site_wide_admin_p -user_id $user_id]]
+  }
+  
+  Role create registered_user 
+  registered_user proc is_member {-user_id:required -package_id} {
+    return [expr {$user_id != 0}]
+  }
+
+  Role create unregistered_user
+  unregistered_user proc is_member {-user_id:required -package_id} {
+    return [expr {$user_id == 0}]
+  }
+  
+  Role create admin 
+  admin proc is_member {-user_id:required -package_id:required} {
+    return [::xo::cc permission -object_id $package_id -privilege admin -party_id $user_id]
+  }
+  admin proc get_members {-object_id:required} {
+    set members [db_list get_admins {
+      select party_id from acs_object_party_privilege_map 
+      where object_id = :object_id and privilege = 'admin'
+    }]
+  }
+  
+  Role create creator
+  creator proc is_member {-user_id:required -package_id -object:required} {
+    $object instvar creation_user
+    return [expr {$creation_user == $user_id}]
+  }
+
+  Role create app_group_member 
+  app_group_member proc is_member {-user_id:required -package_id} {
+    return [::xo::cc cache [list application_group::contains_party_p \
+                          -party_id $user_id \
+                          -package_id $package_id]]
+  }
+
+  Role create community_member
+  community_member proc is_member {-user_id:required -package_id} {
+    if {[info command ::dotlrn_community::get_community_id] ne ""} {
+      set community_id [my cache [list [dotlrn_community::get_community_id -package_id $package_id]]]
+      if {$community_id ne ""} {
+        return [my cache [list dotlrn::user_is_community_member_p \
+                              -user_id $user_id \
+                              -community_id $community_id]]
+      }
+    }
+    return 0
+  }
+
+}
+
+
+
+
+namespace eval ::xowiki {
+
+  ###########################################################
+  #
+  # ::xowiki::FormField::role_member
+  #
+  ###########################################################
+
+  Class FormField::role_member -superclass FormField -superclass FormField::select -parameter {role}
+  FormField::role_member instproc render_input {} {
+    my instvar role
+    #my msg role=$role,obj=[my object]
+    set members [::xo::role::$role get_members -object_id [[my object] package_id]]
+    foreach m $members { my lappend options [list [::xo::get_user_name $m] $m] }
+    next
+  }
 }

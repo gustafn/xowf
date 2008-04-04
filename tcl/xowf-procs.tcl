@@ -152,11 +152,13 @@ namespace eval ::xowf {
       foreach role [$s set handled_roles] {
         set role_ctx [self]-$role
         #my msg exists?role=$role->[self]-$role->[info command [self]-$role]
-        foreach a [${role_ctx}::[$s name] actions] {
-          set action ${role_ctx}::$a
-          set next_state [$action next_state]
-          if {$next_state eq ""} {set next_state [namespace tail $s]}
-          append result "  state_[namespace tail $s] -> state_$next_state \[label=\"$role:$a\"\];\n"	
+	if {[info command ${role_ctx}::[$s name]] ne ""} {
+	  foreach a [${role_ctx}::[$s name] actions] {
+	    set action ${role_ctx}::$a
+	    set next_state [$action next_state]
+	    if {$next_state eq ""} {set next_state [namespace tail $s]}
+	    append result "  state_[namespace tail $s] -> state_$next_state \[label=\"$role:[$action label]\"\];\n"	
+	  }
         }
       }
     }
