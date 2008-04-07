@@ -197,7 +197,7 @@ namespace eval ::xowf {
     set ofn dot-$obj_id.png
     set f [open $fn w]; puts $f $result; close $f
     exec $dot -Tpng $fn -o $path/$ofn
-    #file delete $fn
+    file delete $fn
     return "<img style='$style' src='[[[my object] package_id] package_url]/$ofn'>\n"
   }
 
