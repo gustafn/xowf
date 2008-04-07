@@ -31,15 +31,22 @@ namespace eval ::xowiki {
     if {![catch {set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
 		 -workflow_definition [my value]]} errorMsg]} {
       set errorMsg ""
-      foreach s [$ctx defined State]  {set state([$s name])  $s}
-      foreach a [$ctx defined Action] {set action([$a name]) $a}
+      foreach s [$ctx defined State]     {set state([$s name])  $s}
+      foreach a [$ctx defined Action]    {set action([$a name]) $a}
+      foreach a [$ctx defined Condition] {set condition([$a name]) $a}
       foreach a [$ctx defined Action] {
         # Are some "next_states" undefined?
-        set next_state [$a next_state]
-        if {$next_state ne "" && ![info exists state($next_state)]} {
-          set errorMsg "Error in action [$a name]: no such state '$next_state' defined \
+	foreach entry [$a next_state] {
+	  array set "" [$a get_condition $entry]
+	  if {$(cond) ne "" && ![info exists condition($(cond))]} {
+	    set errorMsg "Error in action [$a name]: no such condition '$(cond)' defined \
+		(valid: [lsort [array names condition]])"
+	  }
+	  if {$(value) ne "" && ![info exists state($(value))]} {
+	    set errorMsg "Error in action [$a name]: no such state '$(value)' defined \
 		(valid: [lsort [array names state]])"
-        }
+	  }
+	}
       }
       foreach s [$ctx defined State] {
         # Are some "actions" undefined?

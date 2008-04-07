@@ -97,9 +97,10 @@ namespace eval ::xowf {
     #
     regsub -all \r\n [my workflow_definition] \n workflow_definition
     my contains "
-       Class create Action   -superclass ::xowf::Action
-       Class create State    -superclass ::xowf::State
-       Class create Property -superclass ::xowf::Property -set abstract 1
+       Class create Action   -superclass  ::xowf::Action
+       Class create State    -superclass  ::xowf::State
+       Class create Condition -superclass ::xowf::Condition
+       Class create Property -superclass  ::xowf::Property -set abstract 1
        $workflow_definition"
     if {[my all_roles]} {
       #my msg want.to.create=[my array names handled_roles]
@@ -120,6 +121,36 @@ namespace eval ::xowf {
     }
     return ::$name
   }
+
+  Context instproc draw_arc {from_state next_state action label style} {
+    if {$next_state eq ""} {set next_state $from_state}
+    set key transition($from_state,$next_state,$action)
+    if {[my exists $key]} {return ""}
+    my set $key 1
+    return "  state_$from_state -> state_$next_state \[label=\"$label\"$style\];\n"
+  }
+  Context instproc draw_transition {from action role} {
+    set spec [$action next_state]
+    set result ""
+    if {[llength $spec]>1} {
+      # we have a condition
+      set c cond_[$from name]
+      set arc_style {,style="setlinewidth(1)",color=gray}
+      append result "  state_$c \[shape=diamond, fixedsize=1, width=0.2, height=0.2, fixedsize=1,style=solid,color=gray,label=\"\"\];\n"
+      append result [my draw_arc [$from name] $c [$action name]-1 $role[$action label] ""]
+      foreach entry $spec {
+	array set "" [$action get_condition $entry]
+	if {$(cond) ne ""} {set prefix "$(cond)"} {set prefix "else"}
+	append result [my draw_arc $c $(value) [$action name] \[$prefix\] $arc_style] 
+	#append result [my draw_arc [$from name] $(value) [$action name] $role$prefix[$action label]]
+      }
+    } else {
+      set prefix ""
+      append result [my draw_arc [$from name] $spec [$action name] $role$prefix[$action label] ""]
+    }
+    return $result
+  }
+  
   Context instproc as_graph {{-current_state ""} {-visited ""} {-dpi 96} {-style "width:100%"}} {
     set dot ""
     catch {set dot [::util::which dot]}
@@ -143,33 +174,30 @@ namespace eval ::xowf {
         set color ""
       }
       append result "  state_[$s name] \[label=\"[$s label]\"$color\];\n"
+    }
+    append result "start->state_initial;"
+    foreach s [my defined State] {
       foreach a [$s actions] {
-	set action [self]::$a
-	set next_state [$action next_state]
-	if {$next_state eq ""} {set next_state [namespace tail $s]}
-	append result "  state_[namespace tail $s] -> state_$next_state \[label=\"$a\"\];\n"	
+	append result [my draw_transition $s [self]::$a ""]
       }
       foreach role [$s set handled_roles] {
         set role_ctx [self]-$role
         #my msg exists?role=$role->[self]-$role->[info command [self]-$role]
 	if {[info command ${role_ctx}::[$s name]] ne ""} {
 	  foreach a [${role_ctx}::[$s name] actions] {
-	    set action ${role_ctx}::$a
-	    set next_state [$action next_state]
-	    if {$next_state eq ""} {set next_state [namespace tail $s]}
-	    append result "  state_[namespace tail $s] -> state_$next_state \[label=\"$role:[$action label]\"\];\n"	
+	    append result [my draw_transition $s ${role_ctx}::$a "$role:"]
 	  }
         }
       }
     }
-    append result "start->state_initial;"
+
     append result "\}\n"
     set path [acs_package_root_dir xowf]/www/
     set fn $path/g.dot
     set ofn dot-$obj_id.png
     set f [open $fn w]; puts $f $result; close $f
     exec $dot -Tpng $fn -o $path/$ofn
-    file delete $fn
+    #file delete $fn
     return "<img style='$style' src='[[[my object] package_id] package_url]/$ofn'>\n"
   }
 
@@ -177,7 +205,11 @@ namespace eval ::xowf {
   #
   # State and Action, two base classes for workflow definitions
   #
-  Class WorkflowConstruct -parameter {{handled_roles [list]}}
+  Class WorkflowConstruct -parameter {
+    {handled_roles [list]}
+    {label "[namespace tail [self]]"}
+    {name  "[namespace tail [self]]"}
+  }
   WorkflowConstruct ad_instforward property     {get property} {%[my info parent] object} %proc
   WorkflowConstruct ad_instforward set_property {set property} {%[my info parent] object} %proc
 
@@ -204,23 +236,43 @@ namespace eval ::xowf {
     {form ""}
     {form_constraints ""}
     {assigned_to}
-    {label "[namespace tail [self]]"}
-    {name  "[namespace tail [self]]"}
+  }
+
+  Class Condition -superclass WorkflowConstruct -parameter expr
+  Condition instproc init {} {
+    [my info parent]::Action instproc [namespace tail [self]] {} "
+      [my info parent] instvar {object obj}
+      expr {[my expr]}
+    "
   }
 
   #{label "#xowf.form-button-[namespace tail [self]]#"}
   Class Action -superclass WorkflowConstruct -parameter {
     {next_state ""}
     {roles all}
-    {label "[namespace tail [self]]"}
-    {name  "[namespace tail [self]]"}
   }
   Action instproc activate {obj} {;}
+  Action instproc get_condition {conditional_entry} {
+    set e [split $conditional_entry :]
+    if {[llength $e]==2} {return [list cond [lindex $e 0] value [lindex $e 1]]}
+    return [list cond "" value $conditional_entry]
+  }
+  Action instproc get_next_state {} {
+    foreach entry [my next_state] {
+      array set "" [my get_condition $entry]
+      if {$(cond) ne ""} {
+	if {[my $(cond)]} {return $(value)}
+      } else {
+	return $(value)
+      }
+    }
+  }
 
   Class Property -superclass ::xowiki::FormField -parameter {{name "[namespace tail [self]]"}}
   Property set abstract 1
   #namespace export State Action Property
-  
+
+
 
   #
   # MixinClass for implementing the workflow definition and workflow instance
@@ -378,7 +430,7 @@ namespace eval ::xowf {
             if {[catch {${ctx}::$action activate [self]} errorMsg]} {
               my msg "error in action: $errorMsg"
             } else {
-              set next_state [${ctx}::$action next_state]
+              set next_state [${ctx}::$action get_next_state]
               #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
               if {$next_state ne ""} {
                 if {[${ctx}::$next_state exists assigned_to]} {
