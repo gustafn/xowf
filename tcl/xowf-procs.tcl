@@ -49,6 +49,7 @@ namespace eval ::xowf {
   # forward property to the workflow object
   Context instforward property {%my object} %proc
   Context instforward set_property {%my object} %proc
+  Context instforward get_property {%my object} %proc
 
   # forward form_constraints, view_method and for the to current state object
   Context instforward get_form_constraints {%my current_state} form_constraints
@@ -86,6 +87,7 @@ namespace eval ::xowf {
     }
     my set form_id $form_id
   }
+
   Context instproc init {} {
     my destroy_on_cleanup
     my array set handled_roles {}
@@ -110,6 +112,7 @@ namespace eval ::xowf {
       }
     }
   }
+
   Context proc require {obj} {
     set name $obj-wfctx
     if {![my isobject ::$name]} {
@@ -268,8 +271,14 @@ namespace eval ::xowf {
     }
   }
 
-  Class Property -superclass ::xowiki::FormField -parameter {{name "[namespace tail [self]]"}}
+  Class Property \
+      -superclass ::xowiki::FormField -parameter {{name "[namespace tail [self]]"}} \
+      -parameter {{allow_query_parameter false}}
   Property set abstract 1
+
+  Property instproc get_default_from {page} {
+    my default [[my info parent] get_property -source $page -name [my name] -default ""]
+  }
   #namespace export State Action Property
 
 
@@ -538,9 +547,15 @@ namespace eval ::xowf {
       # get the initial state from the workflow
       #
       set ctx [::xowf::Context require [self]]
-      foreach p [$ctx defined ::xowiki::FormField] {set __ia([$p name]) [$p default]}
+      foreach p [$ctx defined ::xowiki::FormField] {
+        set __ia([$p name]) [$p default]
+        set f([$p name]) $p
+      }
       foreach {qp_name value} [::xo::cc get_all_query_parameter] {
-        if {[regexp {^p.(.+)$} $qp_name _ name]} {
+        if {[regexp {^p.(.+)$} $qp_name _ name] 
+            && [info exists f($name)] 
+            && [$f($name) exists allow_query_parameter]
+          } {
           set __ia($name) $value
         }
       }
