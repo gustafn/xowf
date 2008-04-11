@@ -277,6 +277,7 @@ namespace eval ::xowf {
   Property set abstract 1
 
   Property instproc get_default_from {page} {
+    my set parampage $page
     my default [[my info parent] get_property -source $page -name [my name] -default ""]
   }
   #namespace export State Action Property

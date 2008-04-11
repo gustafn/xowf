@@ -26,11 +26,13 @@ namespace eval ::xowiki {
 		 -workflow_definition [my value] ]
     return [$ctx as_graph -dpi [my dpi] -style "max-width: 35%;"]
   }
+
   FormField::workflow_definition instproc check=workflow {value} {
     # Do we have a syntax error in the workflow definition?
     if {![catch {set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
+                 -all_roles true \
 		 -workflow_definition [my value]]} errorMsg]} {
-      set errorMsg ""
+      unset errorMsg
       foreach s [$ctx defined State]     {set state([$s name])  $s}
       foreach a [$ctx defined Action]    {set action([$a name]) $a}
       foreach a [$ctx defined Condition] {set condition([$a name]) $a}
@@ -56,9 +58,16 @@ namespace eval ::xowiki {
 		(valid: [lsort [array names action]])"
           }
         }
+        set forms([$s form]) 1
+      }
+      foreach p [$ctx defined ::xowiki::FormField] {
+        if {[$p exists parampage]} {set parampages([$p set parampage]) 1}
       }
     }
+    #my msg forms=[array names forms]-r=[$ctx array get handled_roles]-e=[info exists errorMsg]
+    my msg "forms=[array names forms], parampages=[array names parampages]"
     if {[info exists errorMsg]} {
+      my msg errorMsg=$errorMsg
       my uplevel [list set errorMsg $errorMsg]
       return 0
     }
