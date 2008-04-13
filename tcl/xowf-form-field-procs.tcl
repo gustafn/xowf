@@ -64,8 +64,24 @@ namespace eval ::xowiki {
         if {[$p exists parampage]} {set parampages([$p set parampage]) 1}
       }
     }
-    #my msg forms=[array names forms]-r=[$ctx array get handled_roles]-e=[info exists errorMsg]
-    my msg "forms=[array names forms], parampages=[array names parampages]"
+    #my msg "forms=[array names forms], parampages=[array names parampages]"
+    set page [my object]
+    foreach {type pages} [list wf_form [array names forms] wf_parampage [array names parampages]] {
+      foreach p $pages {
+        set l [::xowiki::Link new -volatile -page $page -type $type -name $p]
+        set item_id [$l resolve]
+        #my msg "-- wf resolve for $page returned $item_id (name=$p) "
+        # Rendering the link does the optional fetch of the names, and maintains the
+        # variable references of the page object.
+        set link_text [$l render]
+      }
+    }
+    #my msg "-- link_text=$link_text"
+    if {[$page exists references]} {
+      #my msg refs=[$page set references]
+      $page update_references [$page item_id] [lsort -unique [$page set references]]
+    }
+    
     if {[info exists errorMsg]} {
       my msg errorMsg=$errorMsg
       my uplevel [list set errorMsg $errorMsg]
@@ -78,7 +94,9 @@ namespace eval ::xowiki {
     set text [string map [list & "&amp;" < "&lt;" > "&gt;" \" "&quot;" ' "&apos;" @ "&#64;"] [my value]]
     return "<div style='width: 65%; overflow:auto;float: left;'>
 	<pre class='code'>$text</pre></div>
-	<div float: right;'>[my as_graph]</div><div class='visual-clear'></div>"
+	<div float: right;'>[my as_graph]</div><div class='visual-clear'></div>
+        [[my object] include my-refers] 
+   "
   }
 
 
