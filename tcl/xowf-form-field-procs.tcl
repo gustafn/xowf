@@ -33,57 +33,12 @@ namespace eval ::xowiki {
                  -all_roles true \
 		 -workflow_definition [my value]]} errorMsg]} {
       unset errorMsg
-      foreach s [$ctx defined State]     {set state([$s name])  $s}
-      foreach a [$ctx defined Action]    {set action([$a name]) $a}
-      foreach a [$ctx defined Condition] {set condition([$a name]) $a}
-      foreach a [$ctx defined Action] {
-        # Are some "next_states" undefined?
-	foreach entry [$a next_state] {
-	  array set "" [$a get_condition $entry]
-	  if {$(cond) ne "" && ![info exists condition($(cond))]} {
-	    set errorMsg "Error in action [$a name]: no such condition '$(cond)' defined \
-		(valid: [lsort [array names condition]])"
-	  }
-	  if {$(value) ne "" && ![info exists state($(value))]} {
-	    set errorMsg "Error in action [$a name]: no such state '$(value)' defined \
-		(valid: [lsort [array names state]])"
-	  }
-	}
-      }
-      foreach s [$ctx defined State] {
-        # Are some "actions" undefined?
-        foreach a [$s actions] {
-          if {![info exists action($a)]} {
-            set errorMsg "Error in state [$s name]: no such action '$a' defined \
-		(valid: [lsort [array names action]])"
-          }
-        }
-        set forms([$s form]) 1
-      }
-      foreach p [$ctx defined ::xowiki::FormField] {
-        if {[$p exists parampage]} {set parampages([$p set parampage]) 1}
-      }
-    }
-    #my msg "forms=[array names forms], parampages=[array names parampages]"
-    set page [my object]
-    foreach {type pages} [list wf_form [array names forms] wf_parampage [array names parampages]] {
-      foreach p $pages {
-        set l [::xowiki::Link new -volatile -page $page -type $type -name $p]
-        set item_id [$l resolve]
-        #my msg "-- wf resolve for $page returned $item_id (name=$p) "
-        # Rendering the link does the optional fetch of the names, and maintains the
-        # variable references of the page object.
-        set link_text [$l render]
-      }
-    }
-    #my msg "-- link_text=$link_text"
-    if {[$page exists references]} {
-      #my msg refs=[$page set references]
-      $page update_references [$page item_id] [lsort -unique [$page set references]]
+      array set "" [$ctx check]
+      if {$(rc) == 1} {set errorMsg $(errorMsg)}
     }
     
     if {[info exists errorMsg]} {
-      my msg errorMsg=$errorMsg
+      #my msg errorMsg=$errorMsg
       my uplevel [list set errorMsg $errorMsg]
       return 0
     }

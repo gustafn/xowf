@@ -204,6 +204,69 @@ namespace eval ::xowf {
     return "<img style='$style' src='[[[my object] package_id] package_url]/$ofn'>\n"
   }
 
+  Context instproc check {} {
+    foreach s [my defined State]     {set state([$s name])  $s}
+    foreach a [my defined Action]    {set action([$a name]) $a}
+    foreach a [my defined Condition] {set condition([$a name]) $a}
+    foreach a [my defined Action] {
+      # Are some "next_states" undefined?
+      foreach entry [$a next_state] {
+        array set "" [$a get_condition $entry]
+        if {$(cond) ne "" && ![info exists condition($(cond))]} {
+          return [list rc 1 errorMsg "Error in action [$a name]: no such condition '$(cond)' defined \
+		(valid: [lsort [array names condition]])"]
+        }
+        if {$(value) ne "" && ![info exists state($(value))]} {
+          return [list rc 1 errorMsg "Error in action [$a name]: no such state '$(value)' defined \
+		(valid: [lsort [array names state]])"]
+        }
+      }
+      foreach s [my defined State] {
+        # Are some "actions" undefined?
+        foreach a [$s actions] {
+          if {![info exists action($a)]} {
+            return [list rc 1 errorMsg "Error in state [$s name]: no such action '$a' defined \
+		(valid: [lsort [array names action]])"]
+          }
+        }
+        my set forms([$s form]) 1
+      }
+      foreach p [my defined ::xowiki::FormField] {
+        if {[$p exists parampage]} {my set parampages([$p set parampage]) 1}
+      }
+    }
+    #my msg "forms=[my array names forms], parampages=[my array names parampages] in-role [my exists in_role] [my array names handled_roles]"
+    
+    if {![my exists in_role]} {
+      foreach role [my array names handled_roles] {
+        set role_ctx [self]-$role
+        if {[my isobject $role_ctx]} {
+          array set "" [$role_ctx check]
+          if {$(rc) == 1} {return [array get ""]}
+          my array set forms [$role_ctx array get forms]
+          my array set parampage [$role_ctx array get parampage]
+        }
+      }
+      #my msg "forms=[my array names forms], parampages=[my array names parampages]"
+      set page [my object]
+      foreach {type pages} [list wf_form [my array names forms] wf_parampage [my array names parampages]] {
+        foreach p $pages {
+          set l [::xowiki::Link new -volatile -page $page -type $type -name $p]
+          set item_id [$l resolve]
+          #my msg "-- wf resolve for $page returned $item_id (name=$p) "
+          # Rendering the link does the optional fetch of the names, and maintains the
+          # variable references of the page object.
+          set link_text [$l render]
+        }
+      }
+      #my msg "-- link_text=$link_text"
+      if {[$page exists references]} {
+        #my msg "updating references refs=[$page set references]"
+        $page update_references [$page item_id] [lsort -unique [$page set references]]
+      }
+    }
+    return [list rc 0]
+  }
 
   #
   # State and Action, two base classes for workflow definitions
