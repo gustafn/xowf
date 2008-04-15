@@ -833,7 +833,6 @@ namespace eval ::xowf {
   #    select hkey from xowiki_page_instance where hkey is not null;
   #    select hkey from xowiki_page_instance where defined(hkey, 'team_email');
   #    select hkey from xowiki_page_instance where exist(hkey, 'team_email');
-  #    select hkey from xowiki_page_instance where exist(hkey, 'team_email');
   #    select hkey from xowiki_page_instance where  'team_email=>neumann@wu-wien.ac.at' <@ hkey;
   #    select (each(hkey)).key, (each(hkey)).value from xowiki_page_instance;
   #    select page_instance_id, (each(hkey)).key, (each(hkey)).value from xowiki_page_instance 
