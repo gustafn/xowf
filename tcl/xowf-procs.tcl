@@ -569,13 +569,47 @@ namespace eval ::xowf {
       array set __ia [my instance_attributes]
       set ctx [::xowf::Context require [self]] 
       set __ia(wf_current_state) [$ctx get_current_state]
-      #my msg "setting current_state to '[$ctx get_current_state]'"
-      my instance_attributes [array get __ia]
       #my msg "saving ia: [array get __ia]"
+      my instance_attributes [array get __ia]
+      #
+      # we have to flag currently storing in hstore here, since
+      # saving removes the temporary variables for properties
+      #
+      if {[::xo::db::has_hstore]} {set save_in_hstore 1}
     }
     next
+    if {[info exists save_in_hstore]} {
+      # "next" sets the revision_id
+      my save_in_hstore
+    }
   }
 
+  WorkflowPage instproc double_quote {value} {
+    if {[regexp {[ ,\"\\=>]} $value]} {
+      set value \"[string map [list \" \\\\\" \\ \\\\ ' \\\\'] $value]\"
+    }
+    return $value
+  }
+  WorkflowPage instproc save_in_hstore {} {
+    # experimental code for testing with hstore
+    # to use it, do for now something like:
+    #
+    # /usr/local/pg820/bin/psql -U nsadmin -d dotlrn-test5 < /usr/local/pg820/share/postgresql/contrib/hstore.sql
+    # alter table xowiki_page_instance add column hkey hstore;
+    # CREATE INDEX hidx ON xowiki_page_instance using GIST(hkey);
+    #
+    set keys [list]
+    foreach {key value} [my instance_attributes] {
+      set v [my double_quote $value]
+      if {$v eq ""} continue
+      if {$key eq "workflow_definition"} continue
+      lappend keys [my double_quote $key]=>$v
+    }
+    my msg "hkey='[join $keys ,]'"
+    db_dml dbqd..update_hstore "update xowiki_page_instance \
+                set hkey = '[join $keys ,]'
+                where page_instance_id = [my page_instance_id]"
+  }
   WorkflowPage instproc wf_property {name} {
     if {[my exists __wf]} {set key __wf($name)} else {set key __wfi($name)}
     if {[my exists $key]} { return [my set $key] }
@@ -762,6 +796,51 @@ namespace eval ::xowf {
       }
     }
   }
+
+  ad_proc update_hstore {package_id} {
+    update all instance attributes in hstore
+  } {
+    if {![::xo::db::has_hstore]} {return 0}
+    #
+    # This proc can be used from ds/shell as follows
+    #
+    #    ::xowf::Package initialize -url /xowf
+    #    ::xowf::update_hstore $package_id
+    #
+    # Check the result
+    #
+    #    select hkey from xowiki_page_instance where hkey is not null;
+    #
+    ::xowf::Package initialize -package_id $package_id
+    #
+    # we get all revisions, so use the lower level interface
+    #
+    set items [::xowiki::FormPage instantiate_objects \
+                   -sql "select * from xowiki_form_pagei bt,cr_items i \
+			where i.parent_id = [$package_id folder_id] and bt.item_id = i.item_id" \
+                   -object_class ::xowiki::FormPage]
+    set count 0
+    foreach i [$items children] {
+      $i msg "working on [$i set xowiki_form_page_id]"
+      $i save_in_hstore
+      incr count 
+    }
+    $items msg "fetched $count objects from parent_id [$package_id folder_id]"
+    return 1
+  }
+
+  # Some example hstore queries (over all revisions)
+  #    select hkey from xowiki_page_instance where hkey is not null;
+  #    select hkey from xowiki_page_instance where defined(hkey, 'team_email');
+  #    select hkey from xowiki_page_instance where exist(hkey, 'team_email');
+  #    select hkey from xowiki_page_instance where exist(hkey, 'team_email');
+  #    select hkey from xowiki_page_instance where  'team_email=>neumann@wu-wien.ac.at' <@ hkey;
+  #    select (each(hkey)).key, (each(hkey)).value from xowiki_page_instance;
+  #    select page_instance_id, (each(hkey)).key, (each(hkey)).value from xowiki_page_instance 
+  #        where 'assignee=>539,priority=>1' <@ hkey;   
+  #    select key, count(*) from (select (each(hkey)).key from xowiki_page_instance) as stat 
+  #        group by key order by count desc, key;
+  #
 
 }
 
