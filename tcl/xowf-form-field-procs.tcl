@@ -208,4 +208,7 @@ namespace eval ::xowiki {
     foreach m $members { my lappend options [list [::xo::get_user_name $m] $m] }
     next
   }
+  FormField::role_member instproc pretty_value {v} {
+    return [::xo::get_user_name $v]
+  }
 }
