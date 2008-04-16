@@ -273,6 +273,7 @@ namespace eval ::xowf {
       if {[$page exists references]} {
         #my msg "updating references refs=[$page set references]"
         $page update_references [$page item_id] [lsort -unique [$page set references]]
+	$page unset references
       }
     }
     return [list rc 0]
