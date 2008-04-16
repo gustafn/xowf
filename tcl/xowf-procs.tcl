@@ -6,11 +6,21 @@
   @cvs-id $Id $
 }
 
-# todo:
+# Todo:
 # - validation of template and form_constraints DONE
 # - plain wiki pages DONE
+#
+# - after import, references are not updated 
+#   (same for plain references); after_import methods?
+#
+# - long-term issue: import with categories 
+#   (import/export of category tree 
+#    + category mappings, which have to be remapped to the new IDs)
+#
 # - Roles
 # - assignment
+# - workflow-assingnment includelet (over multiple workflows and 
+#   package instances)
 
 ::xo::db::require package xowiki
 
