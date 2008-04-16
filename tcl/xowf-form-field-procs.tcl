@@ -155,10 +155,11 @@ namespace eval ::xo::role {
     return [::xo::cc permission -object_id $package_id -privilege admin -party_id $user_id]
   }
   admin proc get_members {-object_id:required} {
-    set members [db_list get_admins {
-      select party_id from acs_object_party_privilege_map 
-      where object_id = :object_id and privilege = 'admin'
-    }]
+    set members [db_list_of_lists get_admins "select distinct  o.title, p.party_id
+      from acs_object_party_privilege_map p, acs_objects o
+      where p.object_id = $object_id and p.privilege = 'admin' and o.object_id = p.party_id"]
+    #my msg members=$members
+    return $members
   }
   
   Role create creator
@@ -204,8 +205,8 @@ namespace eval ::xowiki {
   FormField::role_member instproc render_input {} {
     my instvar role
     #my msg role=$role,obj=[my object]
-    set members [::xo::role::$role get_members -object_id [[my object] package_id]]
-    foreach m $members { my lappend options [list [::xo::get_user_name $m] $m] }
+    my set options [::xo::role::$role get_members -object_id [[my object] package_id]]
+    #foreach m $members { my lappend options [list [::xo::get_user_name $m] $m] }
     next
   }
   FormField::role_member instproc pretty_value {v} {
