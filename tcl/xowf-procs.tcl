@@ -832,7 +832,7 @@ namespace eval ::xowf {
                    -object_class ::xowiki::FormPage]
     set count 0
     foreach i [$items children] {
-      $i msg "working on [$i set xowiki_form_page_id]"
+      #$i msg "working on [$i set xowiki_form_page_id]"
       $i save_in_hstore
       incr count 
     }
