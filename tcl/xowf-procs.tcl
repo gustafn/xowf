@@ -29,10 +29,10 @@ namespace eval ::xowf {
       -package_key "xowf" -pretty_name "XoWiki Workflow" \
       -superclass ::xowiki::Package
   
-  Package ad_instproc init {} {
+  Package ad_instproc initialize {} {
     mixin ::xowf::WorkflowPage to every FormPage
   } {
-    my destroy_on_cleanup; #TODO core?
+    #my msg ""
     # called, whenever package is initialized 
     next
     ::xowiki::FormPage instmixin add ::xowf::WorkflowPage
