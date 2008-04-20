@@ -29,10 +29,10 @@ namespace eval ::xowf {
       -package_key "xowf" -pretty_name "XoWiki Workflow" \
       -superclass ::xowiki::Package
   
-  Package ad_instproc init {} {
+  Package ad_instproc initialize {} {
     mixin ::xowf::WorkflowPage to every FormPage
   } {
-    my destroy_on_cleanup; #TODO core?
+    #my msg ""
     # called, whenever package is initialized 
     next
     ::xowiki::FormPage instmixin add ::xowf::WorkflowPage
@@ -263,6 +263,8 @@ namespace eval ::xowf {
       }
       #my msg "forms=[my array names forms], parampages=[my array names parampages]"
       set page [my object]
+      $page set unresolved_references 0
+      $page set __unresolved_references [list]
       foreach {type pages} [list wf_form [my array names forms] wf_parampage [my array names parampages]] {
         foreach p $pages {
           set l [::xowiki::Link new -volatile -page $page -type $type -name $p]
@@ -278,6 +280,11 @@ namespace eval ::xowf {
         #my msg "updating references refs=[$page set references]"
         $page update_references [$page item_id] [lsort -unique [$page set references]]
 	$page unset references
+      }
+      if {[llength [$page set __unresolved_references]] > 0} {
+	# TODO: we should provide a link to create the missing forms. maybe we 
+	# change unresolved_references to a list..., or maybe we write these into the DB.
+	my msg "Missing forms: [join [$page set __unresolved_references] {, }]"
       }
     }
     return [list rc 0]
