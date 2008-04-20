@@ -75,8 +75,8 @@ namespace eval ::xowf {
 
   Context instproc get_actions {} {
     set actions [list]
-    #my msg "for [my current_state] actions '[[my current_state] actions]'"
-    foreach action [[my current_state] actions] {
+    #my msg "for [my current_state] actions '[[my current_state] get_actions]'"
+    foreach action [[my current_state] get_actions] {
       lappend actions [self]::$action
     }
     return $actions
@@ -143,23 +143,21 @@ namespace eval ::xowf {
     return "  state_$from_state -> state_$next_state \[label=\"$label\"$style\];\n"
   }
   Context instproc draw_transition {from action role} {
-    set spec [$action next_state]
+    set cond_values [$action get_cond_values [$action next_state]]
     set result ""
-    if {[llength $spec]>1} {
-      # we have a condition
-      set c cond_[$from name]
+    if {[llength $cond_values]>2} {
+      # we have conditional values
+      set c cond_[$from name]_[my incr condition_count]
       set arc_style {,style="setlinewidth(1)",color=gray}
       append result "  state_$c \[shape=diamond, fixedsize=1, width=0.2, height=0.2, fixedsize=1,style=solid,color=gray,label=\"\"\];\n"
       append result [my draw_arc [$from name] $c [$action name]-1 $role[$action label] ""]
-      foreach entry $spec {
-	array set "" [$action get_condition $entry]
-	if {$(cond) ne ""} {set prefix "$(cond)"} {set prefix "else"}
-	append result [my draw_arc $c $(value) [$action name] \[$prefix\] $arc_style] 
-	#append result [my draw_arc [$from name] $(value) [$action name] $role$prefix[$action label]]
+      foreach {cond value} $cond_values {
+	if {$cond ne ""} {set prefix "$cond"} {set prefix "else"}
+	append result [my draw_arc $c $value [$action name] \[$prefix\] $arc_style] 
       }
     } else {
       set prefix ""
-      append result [my draw_arc [$from name] $spec [$action name] $role$prefix[$action label] ""]
+      append result [my draw_arc [$from name] [lindex $cond_values 1] [$action name] $role$prefix[$action label] ""]
     }
     return $result
   }
@@ -189,15 +187,16 @@ namespace eval ::xowf {
       append result "  state_[$s name] \[label=\"[$s label]\"$color\];\n"
     }
     append result "start->state_initial;"
+    my set condition_count 0
     foreach s [my defined State] {
-      foreach a [$s actions] {
+      foreach a [$s get_actions] {
 	append result [my draw_transition $s [self]::$a ""]
       }
       foreach role [$s set handled_roles] {
         set role_ctx [self]-$role
         #my msg exists?role=$role->[self]-$role->[info command [self]-$role]
 	if {[info command ${role_ctx}::[$s name]] ne ""} {
-	  foreach a [${role_ctx}::[$s name] actions] {
+	  foreach a [${role_ctx}::[$s name] get_actions] {
 	    append result [my draw_transition $s ${role_ctx}::$a "$role:"]
 	  }
         }
@@ -209,7 +208,9 @@ namespace eval ::xowf {
     set fn $path/g.dot
     set ofn dot-$obj_id.png
     set f [open $fn w]; puts $f $result; close $f
-    exec $dot -Tpng $fn -o $path/$ofn
+    if {[catch {exec $dot -Tpng $fn -o $path/$ofn} errorMsg]} {
+      my msg "Error during execution of $dot: $errorMsg"
+    }
     file delete $fn
     return "<img style='$style' src='[[[my object] package_id] package_url]/$ofn'>\n"
   }
@@ -218,33 +219,36 @@ namespace eval ::xowf {
     foreach s [my defined State]     {set state([$s name])  $s}
     foreach a [my defined Action]    {set action([$a name]) $a}
     foreach a [my defined Condition] {set condition([$a name]) $a}
+    array set condition {else 1 true 1 default 1}
     foreach a [my defined Action] {
       # Are some "next_states" undefined?
-      foreach entry [$a next_state] {
-        array set "" [$a get_condition $entry]
-        if {$(cond) ne "" && ![info exists condition($(cond))]} {
-          return [list rc 1 errorMsg "Error in action [$a name]: no such condition '$(cond)' defined \
+      foreach {cond value} [$a get_cond_values [$a next_state]] {
+        if {$cond ne "" && ![info exists condition($cond)]} {
+          return [list rc 1 errorMsg "Error in action [$a name]: no such condition '$cond' defined \
 		(valid: [lsort [array names condition]])"]
         }
-        if {$(value) ne "" && ![info exists state($(value))]} {
-          return [list rc 1 errorMsg "Error in action [$a name]: no such state '$(value)' defined \
+        if {$value ne "" && ![info exists state($value)]} {
+          return [list rc 1 errorMsg "Error in action [$a name]: no such state '$value' defined \
 		(valid: [lsort [array names state]])"]
         }
       }
-      foreach s [my defined State] {
-        # Are some "actions" undefined?
-        foreach a [$s actions] {
+    }
+    foreach s [my defined State] {
+      # Are some "actions" undefined?
+      foreach {cond actions} [$s get_cond_values [$s actions]] {
+        foreach a $actions {
           if {![info exists action($a)]} {
             return [list rc 1 errorMsg "Error in state [$s name]: no such action '$a' defined \
 		(valid: [lsort [array names action]])"]
           }
         }
-        my set forms([$s form]) 1
       }
-      foreach p [my defined ::xowiki::FormField] {
-        if {[$p exists parampage]} {my set parampages([$p set parampage]) 1}
-      }
+      my set forms([$s form]) 1
     }
+    foreach p [my defined ::xowiki::FormField] {
+      if {[$p exists parampage]} {my set parampages([$p set parampage]) 1}
+    }
+
     #my msg "forms=[my array names forms], parampages=[my array names parampages] in-role [my exists in_role] [my array names handled_roles]"
     
     if {![my exists in_role]} {
@@ -278,9 +282,11 @@ namespace eval ::xowf {
     }
     return [list rc 0]
   }
+}
 
+namespace eval ::xowf {
   #
-  # State and Action, two base classes for workflow definitions
+  # WorkflowConstruct, the base class for workflow definitions
   #
   Class WorkflowConstruct -parameter {
     {handled_roles [list]}
@@ -306,6 +312,70 @@ namespace eval ::xowf {
       eval my configure $configuration
     }
   }
+  WorkflowConstruct instproc get_condition {conditional_entry} {
+    set e [split $conditional_entry :?]
+    if {[llength $e]==2} {return [list cond [lindex $e 0] value [lindex $e 1]]}
+    return [list cond "" value $conditional_entry]
+  }
+
+  WorkflowConstruct instproc get_cond_values {values} {
+    if {[lindex $values 0] eq "?"} {
+      return [lrange $values 1 end]
+    } elseif {$values eq ""} {
+      return ""
+    } else {
+      if {[regexp {^(.+):([^ ]+) } $values _ cond value]} {
+        my msg "switch '$values' to new syntax: ? $cond $value ..."
+      }
+      return [list "" $values]
+    }
+  }
+  WorkflowConstruct instproc get_value {values} {
+    foreach {cond value} [my get_cond_values $values] {
+      if {$cond eq "" || $cond eq "default" || $cond eq "else" || 
+          $cond eq "true"} {
+        return $value
+      } elseif {[my $cond]} {
+        return $value
+      }
+    }
+  }
+}
+
+namespace eval ::xowf {
+  WorkflowConstruct instforward true set "" 1
+  WorkflowConstruct instforward false set "" 0
+
+  proc ? {cmd expected {msg ""}} {
+    ::xo::Timestamp t1
+    set r [uplevel $cmd]
+    if {$msg eq ""} {set msg $cmd}
+    if {$r ne $expected} {
+      regsub -all \# $r "" r
+      append ::_ "Error: $msg returned \n'$r' ne \n'$expected'\n"
+    } else {
+      append ::_ "$msg - passed ([t1 diff] ms)\n"
+    }
+  }
+
+  #
+  # some test cases
+  #
+  WorkflowConstruct x
+  set ::_ ""
+  ? {x get_value ""} "" 
+  ? {x get_value a} a 
+  ? {x get_value {a b}} {a b}
+  ? {x get_value "a b"} {a b}
+  ? {x get_value "? true a default b"} {a}
+  ? {x get_value "? false a default b"} {b}
+  ? {x get_value "? true {a b} default {b c}"} {a b}
+  ? {x get_value "? false {a b} default {b c}"} {b c}
+  ns_log notice "--Test returns $::_"
+}
+
+
+namespace eval ::xowf {
 
   Class State -superclass WorkflowConstruct -parameter {
     {actions ""}
@@ -315,12 +385,18 @@ namespace eval ::xowf {
     {assigned_to}
   }
 
+  State instproc get_actions {} {
+    return [my get_value [my actions]]
+  }
+
   Class Condition -superclass WorkflowConstruct -parameter expr
   Condition instproc init {} {
-    [my info parent]::Action instproc [namespace tail [self]] {} "
-      [my info parent] instvar {object obj}
-      expr {[my expr]}
-    "
+    [my info parent]::Action instforward [namespace tail [self]] [self]
+    [my info parent]::State  instforward [namespace tail [self]] [self]
+  }
+  Condition instproc defaultmethod {} {
+    [my info parent] instvar {object obj}
+    expr [my expr]
   }
 
   #{label "#xowf.form-button-[namespace tail [self]]#"}
@@ -329,20 +405,8 @@ namespace eval ::xowf {
     {roles all}
   }
   Action instproc activate {obj} {;}
-  Action instproc get_condition {conditional_entry} {
-    set e [split $conditional_entry :]
-    if {[llength $e]==2} {return [list cond [lindex $e 0] value [lindex $e 1]]}
-    return [list cond "" value $conditional_entry]
-  }
   Action instproc get_next_state {} {
-    foreach entry [my next_state] {
-      array set "" [my get_condition $entry]
-      if {$(cond) ne ""} {
-	if {[my $(cond)]} {return $(value)}
-      } else {
-	return $(value)
-      }
-    }
+    return [my get_value [my next_state]]
   }
 
   Class Property \
@@ -616,7 +680,7 @@ namespace eval ::xowf {
       if {$key eq "workflow_definition"} continue
       lappend keys [my double_quote $key]=>$v
     }
-    my msg "hkey='[join $keys ,]'"
+    #my msg "hkey='[join $keys ,]'"
     db_dml dbqd..update_hstore "update xowiki_page_instance \
                 set hkey = '[join $keys ,]'
                 where page_instance_id = [my page_instance_id]"
