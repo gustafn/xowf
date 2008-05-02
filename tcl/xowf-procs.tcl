@@ -143,6 +143,7 @@ namespace eval ::xowf {
     return "  state_$from_state -> state_$next_state \[label=\"$label\"$style\];\n"
   }
   Context instproc draw_transition {from action role} {
+    #my msg "[self args]"
     set cond_values [$action get_cond_values [$action next_state]]
     set result ""
     if {[llength $cond_values]>2} {
@@ -207,7 +208,7 @@ namespace eval ::xowf {
     set path [acs_package_root_dir xowf]/www/
     set fn $path/g.dot
     set ofn dot-$obj_id.png
-    set f [open $fn w]; puts $f $result; close $f
+    set f [open $fn w]; fconfigure $f -encoding utf-8; puts $f $result; close $f
     if {[catch {exec $dot -Tpng $fn -o $path/$ofn} errorMsg]} {
       my msg "Error during execution of $dot: $errorMsg"
     }
