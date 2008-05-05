@@ -7,27 +7,27 @@
 
 ::xo::db::require package xowiki
 
-namespace eval ::xowiki {
+namespace eval ::xowiki::formfield {
   ###########################################################
   #
-  # ::xowiki::FormField::workflow_definition
+  # ::xowiki::formfield::workflow_definition
   #
   ###########################################################
 
-  Class FormField::workflow_definition -superclass ::xowiki::FormField::textarea -parameter {
+  Class workflow_definition -superclass textarea -parameter {
     {rows 20}
     {cols 80}
     {dpi 120}
   } -extend_slot validator workflow
 
-  FormField::workflow_definition instproc as_graph {} {
+  workflow_definition instproc as_graph {} {
     set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
                  -all_roles true -in_role none \
 		 -workflow_definition [my value] ]
     return [$ctx as_graph -dpi [my dpi] -style "max-width: 35%;"]
   }
 
-  FormField::workflow_definition instproc check=workflow {value} {
+  workflow_definition instproc check=workflow {value} {
     # Do we have a syntax error in the workflow definition?
     if {![catch {set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
                  -all_roles true \
@@ -44,7 +44,7 @@ namespace eval ::xowiki {
     }
     return 1
   }
-  FormField::workflow_definition instproc pretty_value {v} {
+  workflow_definition instproc pretty_value {v} {
     [my object] do_substitutions 0
     set text [string map [list & "&amp;" < "&lt;" > "&gt;" \" "&quot;" ' "&apos;" @ "&#64;"] [my value]]
     return "<div style='width: 65%; overflow:auto;float: left;'>
@@ -57,13 +57,13 @@ namespace eval ::xowiki {
 
   ###########################################################
   #
-  # ::xowiki::FormField::current_state
+  # ::xowiki::formfield::current_state
   #
   ###########################################################
-  Class FormField::current_state -superclass ::xowiki::FormField::label -parameter {
+  Class current_state -superclass label -parameter {
     {as_graph true}
   }
-  FormField::current_state instproc render_input {} {
+  current_state instproc render_input {} {
     next
     if {[my as_graph]} {
       set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
@@ -77,7 +77,7 @@ namespace eval ::xowiki {
     }
   }
 
-  FormField::current_state instproc pretty_value {v} {
+  current_state instproc pretty_value {v} {
     set g ""
     if {[my as_graph]} {
       set ctx   [::xowf::Context require [my object]]
@@ -90,15 +90,15 @@ namespace eval ::xowiki {
 
   ###########################################################
   #
-  # ::xowiki::FormField::form
+  # ::xowiki::formfield::form
   #
   ###########################################################
 
-  Class FormField::form -superclass FormField::richtext -parameter {
+  Class form -superclass richtext -parameter {
     {height 200}
   } -extend_slot validator form
 
-  FormField::form instproc check=form {value} {
+  form instproc check=form {value} {
     set form $value
     my msg form=$form
     dom parse -simple -html $form doc
@@ -109,11 +109,11 @@ namespace eval ::xowiki {
 
   ###########################################################
   #
-  # ::xowiki::FormField::form_constraints
+  # ::xowiki::formfield::form_constraints
   #
   ###########################################################
 
-  Class FormField::form_constraints -superclass FormField::textarea -parameter {
+  Class form_constraints -superclass textarea -parameter {
     {rows 5}
   } -extend_slot validator form_constraints
   # the form_constraints checker is defined already on the ::xowiki::Page level
@@ -193,23 +193,23 @@ namespace eval ::xo::role {
 
 
 
-namespace eval ::xowiki {
+namespace eval ::xowiki::formfield {
 
   ###########################################################
   #
-  # ::xowiki::FormField::role_member
+  # ::xowiki::formfield::role_member
   #
   ###########################################################
 
-  Class FormField::role_member -superclass FormField -superclass FormField::select -parameter {role}
-  FormField::role_member instproc render_input {} {
+  Class role_member -superclass FormField -superclass select -parameter {role}
+  role_member instproc render_input {} {
     my instvar role
     #my msg role=$role,obj=[my object]
     my set options [::xo::role::$role get_members -object_id [[my object] package_id]]
     #foreach m $members { my lappend options [list [::xo::get_user_name $m] $m] }
     next
   }
-  FormField::role_member instproc pretty_value {v} {
+  role_member instproc pretty_value {v} {
     return [::xo::get_user_name $v]
   }
 }

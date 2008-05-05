@@ -13,7 +13,7 @@
         <maturity>0</maturity>
 
         <provides url="xowf" version="0.5d"/>
-        <requires url="xowiki" version="0.84"/>
+        <requires url="xowiki" version="0.87"/>
 
         <callbacks>
         </callbacks>

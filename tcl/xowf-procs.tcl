@@ -246,7 +246,7 @@ namespace eval ::xowf {
       }
       my set forms([$s form]) 1
     }
-    foreach p [my defined ::xowiki::FormField] {
+    foreach p [my defined ::xowiki::formfield::FormField] {
       if {[$p exists parampage]} {my set parampages([$p set parampage]) 1}
     }
 
@@ -418,7 +418,7 @@ namespace eval ::xowf {
   }
 
   Class Property \
-      -superclass ::xowiki::FormField -parameter {{name "[namespace tail [self]]"}} \
+      -superclass ::xowiki::formfield::FormField -parameter {{name "[namespace tail [self]]"}} \
       -parameter {{allow_query_parameter false}}
   Property set abstract 1
 
@@ -488,7 +488,7 @@ namespace eval ::xowf {
             if {$success} break
           }
           if {$success} {
-            set f [::xowiki::FormField::submit_button new -destroy_on_cleanup \
+            set f [::xowiki::formfield::submit_button new -destroy_on_cleanup \
                        -name __action_[namespace tail $action] -CSSclass $CSSclass]
             #my msg action=$action
             $f value [$action label]
@@ -728,7 +728,7 @@ namespace eval ::xowf {
       # get the initial state from the workflow
       #
       set ctx [::xowf::Context require [self]]
-      foreach p [$ctx defined ::xowiki::FormField] {
+      foreach p [$ctx defined ::xowiki::formfield::FormField] {
         set __ia([$p name]) [$p default]
         set f([$p name]) $p
       }
