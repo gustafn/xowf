@@ -65,6 +65,7 @@ namespace eval ::xowf {
   Context instforward get_form_constraints {%my current_state} form_constraints
   Context instforward get_view_method      {%my current_state} view_method
   Context instforward form                 {%my current_state} form
+  Context instforward form_loader          {%my current_state} form_loader
 
   Context instproc set_current_state {value} {
     my current_state [self]::$value
@@ -88,9 +89,28 @@ namespace eval ::xowf {
   }
 
   Context instproc form_id {parent_id} {
-    #my msg "get form_id '[my exists form_id]' [my form]"
+    # After this method is activated, the form object of the form of
+    # the current state is created and the instance variable form_id
+    # is set.
+    #
+    # Load the actual form only once for this context.  We cache the
+    # form_id in the context.
+    #
     if {[my exists form_id]} {return [my set form_id]}
-    set form_id [::xo::db::CrClass lookup -name [my form] -parent_id $parent_id]
+    # 
+    # We have to load the form, maybe via form loader.  If the
+    # form_loader is set and the method exists, then use the form
+    # loader instead of the plain lookup. In case the form_loader
+    # fails, it is supposed to return 0.
+    #
+    set loader [my form_loader]
+    if {$loader eq "" || [my info methods $loader] eq ""} {
+      set form_id [::xo::db::CrClass lookup -name [my form] -parent_id $parent_id]
+    } else {
+      #my msg "using loader for [my form]"
+      set form_id [my $loader [my form]]
+      #my msg form_id=$form_id
+    }
     if {$form_id == 0} {
       #  todo: handle case, where form does not exist
       my msg "cannot fetch form '[my form]' from folder $parent_id"
@@ -244,7 +264,9 @@ namespace eval ::xowf {
           }
         }
       }
-      my set forms([$s form]) 1
+      if {[$s form_loader] eq ""} {
+        my set forms([$s form]) 1
+      }
     }
     foreach p [my defined ::xowiki::formfield::FormField] {
       if {[$p exists parampage]} {my set parampages([$p set parampage]) 1}
@@ -389,6 +411,7 @@ namespace eval ::xowf {
     {actions ""}
     {view_method ""}
     {form ""}
+    {form_loader ""}
     {form_constraints ""}
     {assigned_to}
   }
@@ -857,14 +880,21 @@ namespace eval ::xowf {
         set work_flow_base [$package_id pretty_link [$work_flow_form name]]
         set button_objs [list]
 
-        # form definition button 
-        set form [::xo::db::CrClass get_instance_from_db -item_id $entry_form_item_id]
-        set base [$package_id pretty_link [$form name]]
-        set obj [::xowiki::includelet::form-menu-button-form new -volatile \
-                     -package_id $package_id \
-                     -base $base -form $form]
-        if {[info exists return_url]} {$obj return_url $return_url}
-        lappend button_objs $obj
+        # form definition button
+        if {![my isobject $entry_form_item_id]} {
+          # In case, the id is a form object, it is a dynamic form,
+          # that we can't edit; therefore, we provide no link.
+          #
+          # Here, we have have an id that we use for fetching...
+          #
+          set form [::xo::db::CrClass get_instance_from_db -item_id $entry_form_item_id]
+          set base [$package_id pretty_link [$form name]]
+          set obj [::xowiki::includelet::form-menu-button-form new -volatile \
+                       -package_id $package_id \
+                       -base $base -form $form]
+          if {[info exists return_url]} {$obj return_url $return_url}
+          lappend button_objs $obj
+        }
         
         # work flow definition button 
         set obj [::xowiki::includelet::form-menu-button-wf new -volatile \
