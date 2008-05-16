@@ -685,7 +685,8 @@ namespace eval ::xowf {
     }
     next
     if {[info exists save_in_hstore]} {
-      # "next" sets the revision_id
+      # "next" sets the revision_id, by not e.g. page_instance_id
+      my set page_instance_id [my revision_id]
       my save_in_hstore
     }
   }
@@ -714,7 +715,7 @@ namespace eval ::xowf {
     #my msg "hkey='[join $keys ,]'"
     db_dml dbqd..update_hstore "update xowiki_page_instance \
                 set hkey = '[join $keys ,]'
-                where page_instance_id = [my page_instance_id]"
+                where page_instance_id = [my revision_id]"
   }
   WorkflowPage instproc wf_property {name} {
     if {[my exists __wf]} {set key __wf($name)} else {set key __wfi($name)}
