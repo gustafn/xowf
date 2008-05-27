@@ -88,6 +88,34 @@ namespace eval ::xowf {
     return $result
   }
 
+  Context instproc resolve_form_name {name parent_id} {
+    set form_id [::xo::db::CrClass lookup -name $name -parent_id $parent_id]
+    if {!$form_id} {
+      set lang ""; set stripped_name $name
+      regexp {^(..):(.*)$} $name _ lang stripped_name
+      set package_id [[my object] package_id]
+      if {$lang eq ""} {
+        # if no lang is given, use default_locale.
+        # This allows for multi-language workflow instances.
+        set lang [$package_id default_language]
+        set form_id [::xo::db::CrClass lookup -name ${lang}:${stripped_name} -parent_id $parent_id]
+        if {!$form_id} {
+          # Maybe we are configured to use the connection locale. 
+          # In this case, use the system locale as last ressort
+          set system_locale [lang::system::locale -package_id $package_id]
+          set system_lang [string range [my default_locale] 0 1]
+          if {$system_lang ne $lang} {
+            set lang $system_lang
+            set form_id [::xo::db::CrClass lookup -name ${lang}:${stripped_name} -parent_id $parent_id]
+          }
+        }
+      }
+      set name ${lang}:${stripped_name} 
+    }
+    #my msg result=[list form_id $form_id name $name]
+    return [list form_id $form_id name $name]
+  }
+
   Context instproc form_id {parent_id} {
     # After this method is activated, the form object of the form of
     # the current state is created and the instance variable form_id
@@ -105,7 +133,8 @@ namespace eval ::xowf {
     #
     set loader [my form_loader]
     if {$loader eq "" || [my info methods $loader] eq ""} {
-      set form_id [::xo::db::CrClass lookup -name [my form] -parent_id $parent_id]
+      array set "" [my resolve_form_name [my form] $parent_id]
+      set form_id $(form_id)
     } else {
       #my msg "using loader for [my form]"
       set form_id [my $loader [my form]]
@@ -290,11 +319,10 @@ namespace eval ::xowf {
       $page set __unresolved_references [list]
       foreach {type pages} [list wf_form [my array names forms] wf_parampage [my array names parampages]] {
         foreach p $pages {
-          set l [::xowiki::Link new -volatile -page $page -type $type -name $p]
-          set item_id [$l resolve]
-          #my msg "-- wf resolve for $page returned $item_id (name=$p) "
-          # Rendering the link does the optional fetch of the names, and maintains the
-          # variable references of the page object.
+          array set "" [my resolve_form_name $p [$page parent_id]]
+          set l [::xowiki::Link new -volatile -page $page -type $type -name $(name)]
+          # render does the optional fetch of the names, and maintains the
+          # variable references of the page object (similar to render).
           set link_text [$l render]
         }
       }
@@ -682,8 +710,11 @@ namespace eval ::xowf {
       # saving removes the temporary variables for properties
       #
       if {[::xo::db::has_hstore]} {set save_in_hstore 1}
+    } elseif {[my is_wf]} {
+      if {[::xo::db::has_hstore]} {set save_in_hstore 1}
     }
     next
+    #my msg "save_in_hstore=[info exists save_in_hstore]"
     if {[info exists save_in_hstore]} {
       # "next" sets the revision_id, by not e.g. page_instance_id
       my set page_instance_id [my revision_id]
