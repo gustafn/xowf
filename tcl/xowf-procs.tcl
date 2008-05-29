@@ -103,7 +103,7 @@ namespace eval ::xowf {
           # Maybe we are configured to use the connection locale. 
           # In this case, use the system locale as last ressort
           set system_locale [lang::system::locale -package_id $package_id]
-          set system_lang [string range [my default_locale] 0 1]
+          set system_lang [string range $system_locale 0 1]
           if {$system_lang ne $lang} {
             set lang $system_lang
             set form_id [::xo::db::CrClass lookup -name ${lang}:${stripped_name} -parent_id $parent_id]
