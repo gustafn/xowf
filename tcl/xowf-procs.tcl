@@ -351,8 +351,11 @@ namespace eval ::xowf {
     {label "[namespace tail [self]]"}
     {name  "[namespace tail [self]]"}
   }
-  WorkflowConstruct ad_instforward property     {get property} {%[my info parent] object} %proc
-  WorkflowConstruct ad_instforward set_property {set property} {%[my info parent] object} %proc
+  #WorkflowConstruct ad_instforward property     {get property} {%[my info parent] object} %proc
+  #WorkflowConstruct ad_instforward set_property {set property} {%[my info parent] object} %proc
+
+  WorkflowConstruct instforward property     {%[my info parent] object} %proc
+  WorkflowConstruct instforward set_property {%[my info parent] object} %proc
 
   WorkflowConstruct instproc in_role {role configuration} {
     set ctx [my info parent]
@@ -724,7 +727,7 @@ namespace eval ::xowf {
 
   WorkflowPage instproc double_quote {value} {
     if {[regexp {[ ,\"\\=>]} $value]} {
-      set value \"[string map [list \" \\\\\" \\ \\\\ ' \\\\'] $value]\"
+      set value \"[string map [list \" \\\\\" \\ \\\\ ' ''] $value]\"
     }
     return $value
   }
