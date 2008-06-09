@@ -202,6 +202,10 @@ namespace eval ::xowiki::formfield {
   ###########################################################
 
   Class role_member -superclass FormField -superclass select -parameter {role}
+  role_member instproc initialize {} {
+    next
+    my set is_party_id 1
+  }
   role_member instproc render_input {} {
     my instvar role
     #my msg role=$role,obj=[my object]

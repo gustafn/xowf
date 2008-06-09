@@ -712,9 +712,9 @@ namespace eval ::xowf {
       # we have to flag currently storing in hstore here, since
       # saving removes the temporary variables for properties
       #
-      if {[::xo::db::has_hstore]} {set save_in_hstore 1}
+      if {[::xo::db::has_hstore] && [[my package_id] get_parameter use_hstore 0]} {set save_in_hstore 1}
     } elseif {[my is_wf]} {
-      if {[::xo::db::has_hstore]} {set save_in_hstore 1}
+      if {[::xo::db::has_hstore] && [[my package_id] get_parameter use_hstore 0]} {set save_in_hstore 1}
     }
     next
     #my msg "save_in_hstore=[info exists save_in_hstore]"
@@ -948,7 +948,7 @@ namespace eval ::xowf {
   ad_proc update_hstore {package_id} {
     update all instance attributes in hstore
   } {
-    if {![::xo::db::has_hstore]} {return 0}
+    if {![::xo::db::has_hstore] && [$package_id get_parameter use_hstore 0] } {return 0}
     #
     # This proc can be used from ds/shell as follows
     #
