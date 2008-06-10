@@ -177,7 +177,7 @@ namespace eval ::xowf {
     if {![my isobject ::$name]} {
       [self] create $name -destroy_on_cleanup -object $obj \
           -workflow_definition [$obj wf_property workflow_definition]
-      set state [$obj property wf_current_state]
+      set state [$obj state]
       if {$state eq ""} {set state initial}
       $name set_current_state $state
     }
@@ -503,9 +503,9 @@ namespace eval ::xowf {
   WorkflowPage ad_instproc is_wf_instance {} {
     Check, if the current page is a workflow instance (page, refering to a workflow)
   } {
-    #my msg  wf_current_state=[my property wf_current_state]-[my info class]
-    if {[my property wf_current_state] ne ""} {
-      my array set __wfi [[my page_template] instance_attributes]
+    set pt [my page_template]
+    if {[my state] ne "" && [$pt istype ::xowiki::FormPage]} {
+      my array set __wfi [$pt instance_attributes]
       return 1
     }
     return 0
@@ -644,8 +644,7 @@ namespace eval ::xowf {
               #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
               if {$next_state ne ""} {
                 if {[${ctx}::$next_state exists assigned_to]} {
-                  my set_property wf_assignee \
-                      [my get_assignee [${ctx}::$next_state assigned_to]]
+                  my assignee [my get_assignee [${ctx}::$next_state assigned_to]]
                 }
                 $ctx set_current_state $next_state
               }
@@ -705,7 +704,7 @@ namespace eval ::xowf {
     if {[my is_wf_instance]} {
       array set __ia [my instance_attributes]
       set ctx [::xowf::Context require [self]] 
-      set __ia(wf_current_state) [$ctx get_current_state]
+      my state [$ctx get_current_state]
       #my msg "saving ia: [array get __ia]"
       my instance_attributes [array get __ia]
       #
@@ -799,7 +798,7 @@ namespace eval ::xowf {
         }
       }
       # set always the current state to the value from the ctx (initial)
-      set __ia(wf_current_state) [$ctx get_current_state]
+      my state [$ctx get_current_state]
       set instance_attributes [array get __ia]
       #my msg ia=$instance_attributes,props=[$ctx defined Property]
       return $instance_attributes
@@ -852,10 +851,9 @@ namespace eval ::xowf {
   WorkflowPage instproc visited_states {} {
     my instvar item_id
     foreach atts [db_list [my qn history] {
-      select instance_attributes from xowiki_page_instance p, cr_items i, cr_revisions r 
+      select DISTINCT state from xowiki_page_instance p, cr_items i, cr_revisions r 
       where i.item_id = :item_id and r.item_id = i.item_id and page_instance_id = r.revision_id}] {
-      array set __ia $atts
-      set visited($__ia(wf_current_state)) 1
+      set visited($state) 1
     }
     return [array names visited]
   }
@@ -943,6 +941,40 @@ namespace eval ::xowf {
         return [my include [list form-menu -form_item_id $form_item_id -buttons form]]
       }
     }
+  }
+
+  ad_proc migrate_from_wf_current_state {} {
+    # 
+    # transform the former instance_attribute "wf_current_state" to
+    # the xowiki::FormPage attribute "state"
+    #
+    set count 0
+    foreach atts [db_list_of_lists dbq..entries {
+      select p.state,p.assignee,pi.instance_attributes,p.xowiki_form_page_id 
+      from xowiki_form_page p, xowiki_page_instance pi, cr_items i, cr_revisions r 
+      where r.item_id = i.item_id and p.xowiki_form_page_id = r.revision_id and
+      pi.page_instance_id = r.revision_id
+    }] {
+      foreach {state assignee instance_attributes xowiki_form_page_id} $atts break
+      array set __ia $instance_attributes
+      if {[info exists __ia(wf_current_state)] && 
+          $__ia(wf_current_state) ne $state} {
+        #Object msg "must update state $state for $xowiki_form_page_id to  $__ia(wf_current_state) "
+        db_dml dbqd..update_state "update xowiki_form_page \
+                set state = '$__ia(wf_current_state)'
+                where xowiki_form_page_id  = $xowiki_form_page_id" 
+        incr count
+      }
+      if {[info exists __ia(wf_assignee)] && 
+          $__ia(wf_assignee) ne $assignee} {
+        #Object msg "must update assignee $assignee for $xowiki_form_page_id to  $__ia(wf_assignee) "
+        db_dml dbqd..update_state "update xowiki_form_page \
+                set assignee = '$__ia(wf_assignee)'
+                where xowiki_form_page_id  = $xowiki_form_page_id" 
+        incr count
+      }
+    }
+    return $count
   }
 
   ad_proc update_hstore {package_id} {
