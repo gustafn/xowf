@@ -850,11 +850,12 @@ namespace eval ::xowf {
   }
   WorkflowPage instproc visited_states {} {
     my instvar item_id
-    foreach atts [db_list [my qn history] {
-      select DISTINCT state from xowiki_page_instance p, cr_items i, cr_revisions r 
-      where i.item_id = :item_id and r.item_id = i.item_id and page_instance_id = r.revision_id}] {
+    foreach state [db_list [my qn history] {
+      select DISTINCT state from xowiki_form_page p, cr_items i, cr_revisions r 
+      where i.item_id = :item_id and r.item_id = i.item_id and xowiki_form_page_id = r.revision_id}] {
       set visited($state) 1
     }
+    #my msg "visisted states of item $item_id = [array names visited]"
     return [array names visited]
   }
 
@@ -945,8 +946,9 @@ namespace eval ::xowf {
 
   ad_proc migrate_from_wf_current_state {} {
     # 
-    # transform the former instance_attribute "wf_current_state" to
-    # the xowiki::FormPage attribute "state"
+    # Transform the former instance_attributes 
+    #   "wf_current_state" to the xowiki::FormPage attribute "state", and
+    #   "wf_assignee" to the xowiki::FormPage attribute "assignee".
     #
     set count 0
     foreach atts [db_list_of_lists dbq..entries {
@@ -956,6 +958,7 @@ namespace eval ::xowf {
       pi.page_instance_id = r.revision_id
     }] {
       foreach {state assignee instance_attributes xowiki_form_page_id} $atts break
+      array unset __ia
       array set __ia $instance_attributes
       if {[info exists __ia(wf_current_state)] && 
           $__ia(wf_current_state) ne $state} {
