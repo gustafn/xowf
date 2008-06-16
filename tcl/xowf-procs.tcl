@@ -1027,7 +1027,7 @@ namespace eval ::xowf {
 }
 
 namespace eval ::xowf {
-  ::xo::dav create ::xowf::dav -url /dav-todo
+  ::xo::dav create ::xowf::dav -url /dav-todo -package ::xowf::Package
   ::xowf::dav proc GET {} {
     my instvar uri
     set p [::xowiki::Page new -package_id [::xo::cc package_id]]
