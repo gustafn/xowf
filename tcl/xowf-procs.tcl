@@ -1026,5 +1026,15 @@ namespace eval ::xowf {
 
 }
 
+namespace eval ::xowf {
+  ::xo::dav create ::xowf::dav -url /dav-todo
+  ::xowf::dav proc GET {} {
+    my instvar uri
+    set p [::xowiki::Page new -package_id [::xo::cc package_id]]
+    $p include [list wf-todo -ical 1]
+    #ns_return 200 text/plain GET-$uri-XXX-[::xo::cc serialize]-$ical
+  }
+}
+
 
 
