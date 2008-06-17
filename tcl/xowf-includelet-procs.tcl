@@ -97,7 +97,8 @@ namespace eval ::xowiki::includelet {
     $items configure -prodid "-//WU Wien//NONSGML XoWiki Content Flow//EN" 
     set text [$items as_ical]
     my log "--ical sending $text"
-    ns_return 200 text/calendar $text
+    #ns_return 200 text/calendar $text
+    ns_return 200 text/plain $text
   }
 
   wf-todo instproc render {} {

@@ -682,8 +682,12 @@ namespace eval ::xowf {
       set tokens [mime::initialize -canonical "multipart/mixed" -parts $tokens]
     }
 
-    mime::setheader $tokens Subject [acs_mail_lite::utils::build_subject $subject]
-    set headers_list [list [list From $from_info(email)] [list To $to_info(email)]]
+    set headers_list [list]
+    lappend headers_list \
+	[list From $from_info(email)] \
+	[list To $to_info(email)] \
+	[list Subject $subject]
+
     acs_mail_lite::smtp -multi_token $tokens -headers $headers_list
     mime::finalize $tokens -subordinates all
     
@@ -698,7 +702,7 @@ namespace eval ::xowf {
           if {[regexp {^__action_(.+)$} $name _ action]} {
             set ctx [::xowf::Context require [self]]
             if {[catch {${ctx}::$action activate [self]} errorMsg]} {
-              my msg "error in action: $errorMsg"
+              my msg -html 1 "error in action: $errorMsg <PRE>$::errorInfo</PRE>"
             } else {
               set next_state [${ctx}::$action get_next_state]
               #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
