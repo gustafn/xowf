@@ -28,7 +28,7 @@ namespace eval ::xowiki::includelet {
       -parameter {
         {__decoration plain}
         {parameter_declaration {
-          {-workflow}
+          {-workflow ""}
           {-user_id}
           {-ical 0}
           {-max_entries}
@@ -49,7 +49,7 @@ namespace eval ::xowiki::includelet {
       and p.page_template = i2.item_id 
       and o.object_id = xowiki_form_page_id
     }
-    if {[info exists workflow]} {
+    if {$workflow ne ""} {
       # The workflow might be of one of the following forms:
       #   name
       #   <language prefix>:name
@@ -84,34 +84,20 @@ namespace eval ::xowiki::includelet {
   wf-todo instproc render_ical {} {
     my instvar items
     foreach i [$items children] {
-      $i instvar wf_name name title state xowiki_form_page_id pid creation_date last_modified description
+      $i instvar wf_name name title state xowiki_form_page_id pid description
       ::xowf::Package initialize -package_id $pid
-      set tcl_creation_date [::xo::db::tcl_date $creation_date tz]
-      set tcl_last_modified [::xo::db::tcl_date $last_modified tz]
-      set dtstamp   [::xo::ical clock_to_utc [clock scan $tcl_creation_date]]
-      set dtlastmod [::xo::ical clock_to_utc [clock scan $tcl_last_modified]]
-      set dtstamp   [::xo::ical clock_to_utc [clock scan $tcl_creation_date]]
-      set description "Workflow instance of workflow $wf_name $description"
-#PRIORITY:1
-#STATUS:IN-PROCESS
-#PERCENT-COMPLETE:25
-      append t "BEGIN:VTODO
-CREATED:$dtstamp
-LAST-MODIFIED:$dtlastmod
-DTSTAMP:$dtstamp
-UID:$pid-$xowiki_form_page_id
-SUMMARY:[::xo::ical text_to_ical $title]
-URL:[$pid pretty_link -absolute true $name] 
-DESCRIPTION:[::xo::ical text_to_ical $description]
-END:VTODO
-"
+
+      $i class ::xo::ical::VTODO
+      $i configure -uid $pid-$xowiki_form_page_id \
+          -url [$pid pretty_link -absolute true $name] \
+          -summary "$title ($state)" \
+          -description "Workflow instance of workflow $wf_name $description"
     }
-    set text "BEGIN:VCALENDAR
-PRODID:-//WU Wien//NONSGML XoWiki Content Flow//EN
-VERSION:2.0
-${t}END:VCALENDAR
-"
-    ns_return 200 text/plain $text
+    $items mixin ::xo::ical::VCALENDAR
+    $items configure -prodid "-//WU Wien//NONSGML XoWiki Content Flow//EN" 
+    set text [$items as_ical]
+    my log "--ical sending $text"
+    ns_return 200 text/calendar $text
   }
 
   wf-todo instproc render {} {

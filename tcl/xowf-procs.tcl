@@ -625,8 +625,68 @@ namespace eval ::xowf {
   }
 
   WorkflowPage instproc get_assignee {assigned_to} {
-    # todo: resolve assingned_to, currently we just return some user
-    return [my creation_user]
+    return [my assignee]
+  }
+
+  WorkflowPage instproc send_to_assignee {
+    -subject 
+    -from 
+    -body 
+    {-mime_type text/plain}
+    {-with_ical:boolean false}
+  } {
+    my instvar package_id page_template
+    set wf_name [$page_template name]
+
+    if {![info exists subject]} {
+      set subject "\[$wf_name\] [my title] ([my state])"
+    }
+    if {![my exists from]} {set from [my creation_user]}
+    acs_user::get -user_id [my assignee] -array to_info
+    acs_user::get -user_id $from -array from_info
+
+    set message_id [mime::uniqueID]
+    set message_date [acs_mail_lite::utils::build_date]
+    #set tokens [acs_mail_lite::utils::build_body -mime_type text/html $body]
+    set tokens [mime::initialize \
+                    -canonical $mime_type \
+                    -encoding "quoted-printable" -string $body]
+
+    if {$with_ical} {
+      set items [::xo::OrderedComposite new -destroy_on_cleanup -mixin ::xo::ical::VCALENDAR]
+      # hmm, mozilla just supports VEVENT, but changing the VTODO below into a VEVENT
+      # does not seem to help either....
+      $items add [::xo::ical::VTODO new \
+                      -creation_date [my set creation_date] \
+                      -last_modified [my last_modified] \
+                      -uid $package_id-[my revision_id] \
+                      -url [$package_id pretty_link -absolute true [my name]] \
+                      -summary $subject \
+                      -description "Workflow instance of workflow $wf_name [my description]"]
+      $items configure -prodid "-//WU Wien//NONSGML XoWiki Content Flow//EN" -method request
+      set ical [$items as_ical]
+       lappend tokens [mime::initialize \
+                           -canonical text/calendar \
+                           -param [list method request] \
+                           -param [list charset UTF-8] \
+                           -header [list "Content-Disposition" "attachment; filename=\"todo.vcs\""] \
+                           -encoding "quoted-printable" -string $ical]
+      lappend tokens [mime::initialize \
+                          -canonical application/ics -param [list name "invite.ics"] \
+                           -header [list "Content-Disposition" "attachment; filename=\"todo.ics\""] \
+                          -encoding "quoted-printable" -string $ical]
+      #lappend tokens [acs_mail_lite::utils::build_body -mime_type {application/ics; name="invite.ics"} $ical]
+    }
+    
+    if {[llength $tokens]>1} {
+      set tokens [mime::initialize -canonical "multipart/mixed" -parts $tokens]
+    }
+
+    mime::setheader $tokens Subject [acs_mail_lite::utils::build_subject $subject]
+    set headers_list [list [list From $from_info(email)] [list To $to_info(email)]]
+    acs_mail_lite::smtp -multi_token $tokens -headers $headers_list
+    mime::finalize $tokens -subordinates all
+    
   }
 
   WorkflowPage instproc get_form_data args {
@@ -1028,11 +1088,27 @@ namespace eval ::xowf {
 
 namespace eval ::xowf {
   ::xo::dav create ::xowf::dav -url /dav-todo -package ::xowf::Package
+
+  ::xowf::dav proc get_package_id {} {
+    my instvar uri package wf package_id
+    if {$uri eq "/"} {
+      # Take the first package instance
+      set wf ""
+      set package_id [lindex [$package instances] 0]
+      $package initialize -package_id $package_id
+    } else {
+      set wf /$uri
+      $package initialize -url $uri
+    }
+    my log package_id=$package_id
+    return $package_id
+  }
+
   ::xowf::dav proc GET {} {
-    my instvar uri
-    set p [::xowiki::Page new -package_id [::xo::cc package_id]]
-    $p include [list wf-todo -ical 1]
-    #ns_return 200 text/plain GET-$uri-XXX-[::xo::cc serialize]-$ical
+    my instvar uri wf package_id
+    set p [::xowiki::Page new -package_id $package_id]
+    $p include [list wf-todo -ical 1 -workflow $wf]
+    #ns_return 200 text/plain GET-$uri-XXX-pid=$package_id-wf=$wf-[::xo::cc serialize]
   }
 }
 
