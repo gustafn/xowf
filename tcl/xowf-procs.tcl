@@ -820,7 +820,6 @@ namespace eval ::xowf {
     return ""
   }
   WorkflowPage instproc get_form_id {} {
-    #my msg "[my is_wf_instance]"
     my instvar page_template
     if {[my is_wf_instance]} {
       set key __wfi(wf_form_id)
@@ -863,6 +862,7 @@ namespace eval ::xowf {
       }
       # set always the current state to the value from the ctx (initial)
       my state [$ctx get_current_state]
+      #my msg "setting initial state to '[my state]'"
       set instance_attributes [array get __ia]
       #my msg ia=$instance_attributes,props=[$ctx defined Property]
       return $instance_attributes
