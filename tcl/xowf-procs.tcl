@@ -1114,6 +1114,44 @@ namespace eval ::xowf {
     $p include [list wf-todo -ical 1 -workflow $wf]
     #ns_return 200 text/plain GET-$uri-XXX-pid=$package_id-wf=$wf-[::xo::cc serialize]
   }
+
+#   ::xowf::dav proc GET {} {
+#     my instvar uri wf package_id package
+#     if {$uri ne "/"} {
+#       set object_name 18205
+#       set uri /xowf/$object_name
+#       $package initialize -url $uri
+#       set page [$package_id resolve_request -path $object_name method]
+
+#       if {[$page is_wf_instance]} {
+# 	set ctx [::xowf::Context require $page]
+# 	foreach action [$ctx get_actions] {
+# 	  if {[namespace tail $action] eq "work"} {
+# 	    # In the current state, action 'work' is allowed, so
+# 	    # fake a work request with instance attributes 
+# 	    # "comment" and "effort" ....
+# 	    ::xo::cc array set form_parameter \
+# 		[list __object_name $object_name \
+# 		     __form_action save-form-data \
+# 		     __action_work work \
+# 		     comment hello2 \
+# 		     effort 3 \
+# 		    ]
+# 	    ::$package_id reply_to_user [::$package_id invoke -method edit]
+# 	    return
+# 	  }
+# 	}
+# 	ns_return 200 text/plain page=$page-actions=[$ctx get_actions]
+#       }
+#     }
+#   }
+
+
+  ::xowf::dav proc PUT {} {
+    my instvar uri wf package_id
+
+    my log "++++ PUT uri=$uri"
+  }
 }
 
 
