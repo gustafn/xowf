@@ -1116,7 +1116,11 @@ namespace eval ::xowf {
   }
 
 
-  WorkflowPage instproc call_action {-action {-attributes {}}} {
+  WorkflowPage ad_instproc call_action {-action {-attributes {}}} {
+    Call the specified action in the current workflow instance.
+    The specified attributes are provided like form_parameters to
+    the action of the workflow.
+  } {
     my instvar package_id
     if {![my is_wf_instance]} {
       error "Page is not a Workflow Instance"
