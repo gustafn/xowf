@@ -1115,6 +1115,30 @@ namespace eval ::xowf {
     #ns_return 200 text/plain GET-$uri-XXX-pid=$package_id-wf=$wf-[::xo::cc serialize]
   }
 
+
+  WorkflowPage instproc call_action {-action {-attributes {}}} {
+    my instvar package_id
+    if {![my is_wf_instance]} {
+      error "Page is not a Workflow Instance"
+    }
+    set ctx [::xowf::Context require [self]]
+    foreach a [$ctx get_actions] {
+      if {[namespace tail $a] eq $action} {
+	# In the current state, the specified action is allowed, so
+	# fake a work request with the given instance attributes 
+	::xo::cc array set form_parameter \
+	    [list __object_name [my name] \
+		 __form_action save-form-data \
+		 __form_redirect_method __none \
+		 __action_$action $action]
+	::xo::cc array set form_parameter $attributes
+	::$package_id invoke -method edit
+	return "OK"
+      }
+    }
+    error "No action $action available in state [$ctx get_current_state]"
+  }
+
 #   ::xowf::dav proc GET {} {
 #     my instvar uri wf package_id package
 #     if {$uri ne "/"} {
@@ -1122,30 +1146,14 @@ namespace eval ::xowf {
 #       set uri /xowf/$object_name
 #       $package initialize -url $uri
 #       set page [$package_id resolve_request -path $object_name method]
-
-#       if {[$page is_wf_instance]} {
-# 	set ctx [::xowf::Context require $page]
-# 	foreach action [$ctx get_actions] {
-# 	  if {[namespace tail $action] eq "work"} {
-# 	    # In the current state, action 'work' is allowed, so
-# 	    # fake a work request with instance attributes 
-# 	    # "comment" and "effort" ....
-# 	    ::xo::cc array set form_parameter \
-# 		[list __object_name $object_name \
-# 		     __form_action save-form-data \
-# 		     __action_work work \
-# 		     comment hello2 \
-# 		     effort 3 \
-# 		    ]
-# 	    ::$package_id reply_to_user [::$package_id invoke -method edit]
-# 	    return
-# 	  }
-# 	}
-# 	ns_return 200 text/plain page=$page-actions=[$ctx get_actions]
+#       if {[catch {set msg [$page call_action \
+# 			       -action work \
+# 			       -attributes [list comment hello3 effort 4]]} errorMsg]} {
+# 	ns_return 406 text/plain "Error: $errorMsg\n$::errorInfo"
 #       }
+#       ns_return 200 text/plain "Success: $msg"
 #     }
 #   }
-
 
   ::xowf::dav proc PUT {} {
     my instvar uri wf package_id
