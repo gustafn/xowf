@@ -1008,6 +1008,40 @@ namespace eval ::xowf {
     }
   }
 
+  WorkflowPage ad_instproc call_action {-action {-attributes {}}} {
+    Call the specified action in the current workflow instance.
+    The specified attributes are provided like form_parameters to
+    the action of the workflow.
+  } {
+    my instvar package_id
+    if {![my is_wf_instance]} {
+      error "Page [self] is not a Workflow Instance"
+    }
+    set ctx [::xowf::Context require [self]]
+    foreach a [$ctx get_actions] {
+      if {[namespace tail $a] eq "$action"} {
+	# In the current state, the specified action is allowed, so
+	# fake a work request with the given instance attributes 
+	::xo::cc array set form_parameter \
+	    [list __object_name [my name] \
+		 __form_action save-form-data \
+		 __form_redirect_method __none \
+		 __action_$action $action]
+	::xo::cc array set form_parameter $attributes
+
+	if {[catch {::$package_id invoke -method edit -batch_mode 1} errorMsg]} {
+          #my log "---call-action returns error $errorMsg"
+          error $errorMsg
+        }
+	return "OK"
+      }
+    }
+    error "\tNo action '$action' available in workflow instance [self] of \
+	[[my page_template] name] in state [$ctx get_current_state]
+	Available actions: [[$ctx current_state] get_actions]"
+  }
+
+
   ad_proc migrate_from_wf_current_state {} {
     # 
     # Transform the former instance_attributes 
@@ -1090,6 +1124,28 @@ namespace eval ::xowf {
 
 }
 
+#
+# In order to provide either a REST or a DAV interface, we have to 
+# switch to basic authentication, since non-openacs packages 
+# have problems to handle openacs coockies. The basic authentication
+# interface can be establised in three steps:
+#
+#  1) Create a basic authentication handler, Choose a URL and 
+#     define optionally the package to be initialized:
+#     Example:
+#            ::xo::dav create ::xowf::ba -url /ba -package ::xowf::Package
+# 
+#  2) Make sure, the basic authenication handler is initialied during
+#     startup. Write an -init.tcl file containing a call to the
+#     created handler.
+#     Example:
+#            ::xowf::ba register
+#
+#  3) Write procs with names such as GET, PUT, POST to handle
+#     the requests. These procs overload the predefined behavior.
+#
+
+
 namespace eval ::xowf {
   ::xo::dav create ::xowf::dav -url /dav-todo -package ::xowf::Package
 
@@ -1104,9 +1160,25 @@ namespace eval ::xowf {
       set wf /$uri
       $package initialize -url $uri
     }
-    my log package_id=$package_id
+    # my log package_id=$package_id
     return $package_id
   }
+
+
+  ::xowf::dav proc call_action {-uri -action -attributes} {
+    [my package] initialize -url $uri
+    set object_name [$package_id set object]
+    set page [$package_id resolve_request -path $object_name method]
+    if {$page eq ""} {
+      ns_return 406 text/plain "Error: cannot resolve '$object_name' in package [$package_id package_url]"
+    } elseif {[catch {set msg [$page call_action \
+                                   -action $action \
+                                   -attributes $attributes]} errorMsg]} {
+      ns_return 406 text/plain "Error: $errorMsg\n"
+    } else {
+      ns_return 200 text/plain "Success: $msg\n"
+    }
+   }
 
   ::xowf::dav proc GET {} {
     my instvar uri wf package_id
@@ -1115,49 +1187,10 @@ namespace eval ::xowf {
     #ns_return 200 text/plain GET-$uri-XXX-pid=$package_id-wf=$wf-[::xo::cc serialize]
   }
 
-
-  WorkflowPage ad_instproc call_action {-action {-attributes {}}} {
-    Call the specified action in the current workflow instance.
-    The specified attributes are provided like form_parameters to
-    the action of the workflow.
-  } {
-    my instvar package_id
-    if {![my is_wf_instance]} {
-      error "Page is not a Workflow Instance"
-    }
-    set ctx [::xowf::Context require [self]]
-    foreach a [$ctx get_actions] {
-      if {[namespace tail $a] eq $action} {
-	# In the current state, the specified action is allowed, so
-	# fake a work request with the given instance attributes 
-	::xo::cc array set form_parameter \
-	    [list __object_name [my name] \
-		 __form_action save-form-data \
-		 __form_redirect_method __none \
-		 __action_$action $action]
-	::xo::cc array set form_parameter $attributes
-	::$package_id invoke -method edit
-	return "OK"
-      }
-    }
-    error "No action $action available in state [$ctx get_current_state]"
-  }
-
-#   ::xowf::dav proc GET {} {
-#     my instvar uri wf package_id package
-#     if {$uri ne "/"} {
-#       set object_name 18205
-#       set uri /xowf/$object_name
-#       $package initialize -url $uri
-#       set page [$package_id resolve_request -path $object_name method]
-#       if {[catch {set msg [$page call_action \
-# 			       -action work \
-# 			       -attributes [list comment hello3 effort 4]]} errorMsg]} {
-# 	ns_return 406 text/plain "Error: $errorMsg\n$::errorInfo"
-#       }
-#       ns_return 200 text/plain "Success: $msg"
-#     }
-#   }
+  #::xowf::dav proc GET {} {
+  #  set uri /xowf/153516
+  #  my call_action -uri $uri -action work -attributes [list comment hello3 effort 4]
+  #}
 
   ::xowf::dav proc PUT {} {
     my instvar uri wf package_id
