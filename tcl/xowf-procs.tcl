@@ -702,7 +702,15 @@ namespace eval ::xowf {
           if {[regexp {^__action_(.+)$} $name _ action]} {
             set ctx [::xowf::Context require [self]]
             if {[catch {${ctx}::$action activate [self]} errorMsg]} {
-              my msg -html 1 "error in action: $errorMsg <PRE>$::errorInfo</PRE>"
+	      set error "error in action '$action' of workflow instance [my name]\
+		of workflow [[my page_template] name]:"
+	      if {[[my package_id] exists __batch_mode]} {
+		[my package_id] set __evaluation_error "$error\n\n$::errorInfo"
+		incr validation_errors
+	      } else {
+		my msg -html 1 "$error <PRE>$::errorInfo</PRE>"
+	      }
+              my log "--- evaluation error $error\n$::errorInfo"
             } else {
               set next_state [${ctx}::$action get_next_state]
               #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
@@ -1187,10 +1195,12 @@ namespace eval ::xowf {
     #ns_return 200 text/plain GET-$uri-XXX-pid=$package_id-wf=$wf-[::xo::cc serialize]
   }
 
-  #::xowf::dav proc GET {} {
-  #  set uri /xowf/153516
-  #  my call_action -uri $uri -action work -attributes [list comment hello3 effort 4]
-  #}
+#   ::xowf::dav proc GET {} {
+#     set uri /xowf/153516
+#     set uri /xowf/18362
+#     set uri /xowf/18205
+#     my call_action -uri $uri -action work -attributes [list comment hello3 effort 4]
+#   }
 
   ::xowf::dav proc PUT {} {
     my instvar uri wf package_id
