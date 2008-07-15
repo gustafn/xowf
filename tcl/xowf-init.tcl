@@ -1,1 +1,1 @@
-::xowf::dav register
+::xowf::dav-todo register

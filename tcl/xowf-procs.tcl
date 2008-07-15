@@ -1141,7 +1141,7 @@ namespace eval ::xowf {
 #  1) Create a basic authentication handler, Choose a URL and 
 #     define optionally the package to be initialized:
 #     Example:
-#            ::xo::dav create ::xowf::ba -url /ba -package ::xowf::Package
+#            ::xowf::dav create ::xowf::ba -url /ba -package ::xowf::Package
 # 
 #  2) Make sure, the basic authenication handler is initialied during
 #     startup. Write an -init.tcl file containing a call to the
@@ -1155,9 +1155,9 @@ namespace eval ::xowf {
 
 
 namespace eval ::xowf {
-  ::xo::dav create ::xowf::dav -url /dav-todo -package ::xowf::Package
+  ::xotcl::Class create ::xowf::dav -superclass ::xo::dav
 
-  ::xowf::dav proc get_package_id {} {
+  ::xowf::dav instproc get_package_id {} {
     my instvar uri package wf package_id
     if {$uri eq "/"} {
       # Take the first package instance
@@ -1172,8 +1172,7 @@ namespace eval ::xowf {
     return $package_id
   }
 
-
-  ::xowf::dav proc call_action {-uri -action -attributes} {
+  ::xowf::dav instproc call_action {-uri -action -attributes} {
     [my package] initialize -url $uri
     set object_name [$package_id set object]
     set page [$package_id resolve_request -path $object_name method]
@@ -1188,26 +1187,22 @@ namespace eval ::xowf {
     }
    }
 
-  ::xowf::dav proc GET {} {
+
+  ::xowf::dav create ::xowf::dav-todo -url /dav-todo -package ::xowf::Package
+
+  ::xowf::dav-todo proc GET {} {
     my instvar uri wf package_id
     set p [::xowiki::Page new -package_id $package_id]
     $p include [list wf-todo -ical 1 -workflow $wf]
     #ns_return 200 text/plain GET-$uri-XXX-pid=$package_id-wf=$wf-[::xo::cc serialize]
   }
 
-#   ::xowf::dav proc GET {} {
+#   ::xowf::dav-todo proc GET {} {
 #     set uri /xowf/153516
 #     set uri /xowf/18362
 #     set uri /xowf/18205
 #     my call_action -uri $uri -action work -attributes [list comment hello3 effort 4]
 #   }
 
-  ::xowf::dav proc PUT {} {
-    my instvar uri wf package_id
 
-    my log "++++ PUT uri=$uri"
-  }
 }
-
-
-
