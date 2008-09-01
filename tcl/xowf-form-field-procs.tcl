@@ -87,37 +87,6 @@ namespace eval ::xowiki::formfield {
     return "[next]$g"
   }
 
-
-  ###########################################################
-  #
-  # ::xowiki::formfield::form
-  #
-  ###########################################################
-
-  Class form -superclass richtext -parameter {
-    {height 200}
-  } -extend_slot validator form
-
-  form instproc check=form {value} {
-    set form $value
-    my msg form=$form
-    dom parse -simple -html $form doc
-    $doc documentElement root
-    
-    return [expr {[$root nodeName] eq "form"}]
-  }
-
-  ###########################################################
-  #
-  # ::xowiki::formfield::form_constraints
-  #
-  ###########################################################
-
-  Class form_constraints -superclass textarea -parameter {
-    {rows 5}
-  } -extend_slot validator form_constraints
-  # the form_constraints checker is defined already on the ::xowiki::Page level
-
 }
 
 
