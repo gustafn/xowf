@@ -609,7 +609,7 @@ namespace eval ::xowf {
     catch {ds_comment $msg}
   }
 
-  WorkflowPage ad_instproc edit {} {
+  WorkflowPage ad_instproc edit args {
     Hook for editing workflow pages
   } {
     if {[my is_wf_instance]} {
@@ -951,12 +951,15 @@ namespace eval ::xowf {
     return $constraints_from_form
     #return [my merge_constraints $constraints_from_form [my property form_constraints]]
   }
-  WorkflowPage instproc get_form_constraints {} {
+  WorkflowPage instproc get_form_constraints {{-trylocal false}} {
     if {[my istype ::xowiki::FormPage] && [my is_wf]} {
+      #my msg "is_wf"
       return [::xo::cc cache [list [self] wf_merged_form_constraints [next]]]
     } elseif {[my istype ::xowiki::FormPage] && [my is_wf_instance]} {
+      #my msg "is_wf_instance"
       return [::xo::cc cache [list [self] wfi_merged_form_constraints [next]]]
     } else {
+      #my msg "next"
       next
     }
   }
@@ -1051,7 +1054,8 @@ namespace eval ::xowf {
         # make menu
         return [my include [list form-menu -button_objs $button_objs]]
       } else {
-        return [my include [list form-menu -form_item_id $form_item_id -buttons form]]
+        #return [my include [list form-menu -form_item_id $form_item_id -buttons form]]
+        next
       }
     }
   }
