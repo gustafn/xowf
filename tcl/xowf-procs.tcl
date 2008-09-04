@@ -7,15 +7,8 @@
 }
 
 # Todo:
-# - validation of template and form_constraints DONE
-# - plain wiki pages DONE
-#
 # - after import, references are not updated 
 #   (same for plain references); after_import methods?
-#
-# - long-term issue: import with categories 
-#   (import/export of category tree 
-#    + category mappings, which have to be remapped to the new IDs)
 #
 # - Roles
 # - assignment
@@ -76,10 +69,10 @@ namespace eval ::xowf {
 
   Context instproc get_actions {} {
     set actions [list]
-    #my msg "for [my current_state] actions '[[my current_state] get_actions]'"
     foreach action [[my current_state] get_actions] {
       lappend actions [self]::$action
     }
+    #my msg "for [my current_state] actions '$actions"
     return $actions
   }
   Context instproc defined {what} {
@@ -126,7 +119,7 @@ namespace eval ::xowf {
     #
     if {[my exists form_id]} {return [my set form_id]}
     # 
-    # We have to load the form, maybe via form loader.  If the
+    # We have to load the form, maybe via a form loader.  If the
     # form_loader is set and the method exists, then use the form
     # loader instead of the plain lookup. In case the form_loader
     # fails, it is supposed to return 0.
@@ -239,7 +232,7 @@ namespace eval ::xowf {
     append result "start->state_initial;"
     my set condition_count 0
     foreach s [my defined State] {
-      foreach a [$s get_actions] {
+      foreach a [$s get_actions -set true] {
 	append result [my draw_transition $s [self]::$a ""]
       }
       foreach role [$s set handled_roles] {
@@ -373,11 +366,11 @@ namespace eval ::xowf {
       eval my configure $configuration
     }
   }
-  WorkflowConstruct instproc get_condition {conditional_entry} {
-    set e [split $conditional_entry :?]
-    if {[llength $e]==2} {return [list cond [lindex $e 0] value [lindex $e 1]]}
-    return [list cond "" value $conditional_entry]
-  }
+#   WorkflowConstruct instproc get_condition {conditional_entry} {
+#     set e [split $conditional_entry :?]
+#     if {[llength $e]==2} {return [list cond [lindex $e 0] value [lindex $e 1]]}
+#     return [list cond "" value $conditional_entry]
+#   }
 
   WorkflowConstruct instproc get_cond_values {values} {
     if {[lindex $values 0] eq "?"} {
@@ -400,6 +393,13 @@ namespace eval ::xowf {
         return $value
       }
     }
+  }
+  WorkflowConstruct instproc get_value_set {values} {
+    set result [list]
+    foreach {cond value} [my get_cond_values $values] {
+      foreach v $value {lappend result $v}
+    }
+    return [lsort -unique $result]
   }
 }
 
@@ -432,6 +432,7 @@ namespace eval ::xowf {
   ? {x get_value "? false a default b"} {b}
   ? {x get_value "? true {a b} default {b c}"} {a b}
   ? {x get_value "? false {a b} default {b c}"} {b c}
+  ? {x get_value_set "? false {a b} default {b c}"} {a b c}
   ns_log notice "--Test returns $::_"
 }
 
@@ -447,7 +448,14 @@ namespace eval ::xowf {
     {assigned_to}
   }
 
-  State instproc get_actions {} {
+  State instproc get_actions {{-set false}} {
+    if {!$set} {
+      return [my get_value [my actions]]
+    } else {
+      return [my get_value_set [my actions]]
+    }
+  }
+  State instproc get_all_actions {} {
     return [my get_value [my actions]]
   }
 
@@ -554,6 +562,7 @@ namespace eval ::xowf {
       next
     }
   }
+
   WorkflowPage ad_instproc post_process_edit_fields {dom_root form_field} {
     post-process form in edit mode to provide feedback in feedback mode
   } {
@@ -593,6 +602,32 @@ namespace eval ::xowf {
       }
     }
   }
+
+  WorkflowPage instproc debug_msg {msg} {
+    #util_user_message -message $msg
+    ns_log notice "--WF $msg"
+    catch {ds_comment $msg}
+  }
+
+  WorkflowPage ad_instproc edit {} {
+    Hook for editing workflow pages
+  } {
+    if {[my is_wf_instance]} {
+      set ctx [::xowf::Context require [self]]
+      if {[$ctx exists debug] && [$ctx set debug]>0} {
+        my debug_msg "State: [my state], Form: [$ctx form],\
+		View method: [$ctx get_view_method], Form loader: [$ctx form_loader]"
+        set conds [list]
+        foreach c [$ctx defined Condition] {
+          lappend conds "[$c name] [$c]"
+        }
+        my debug_msg "Conditions: [join $conds {, }]"
+        my debug_msg "Instance attributes: [list [my instance_attributes]]"
+      }
+    }
+    next
+  }
+
   WorkflowPage ad_instproc view {{content ""}} {
     Provide additional view modes:
        - edit: instead of viewing a page, it is opened in edit mode
@@ -606,6 +641,7 @@ namespace eval ::xowf {
     if {[my is_wf_instance] && $content eq ""} {
       set ctx [::xowf::Context require [self]]
       set method [$ctx get_view_method]
+
       if {$method ne "" && $method ne "view"} {
         my instvar package_id
         #my msg "view redirects to $method in state [$ctx get_current_state]"
@@ -701,6 +737,10 @@ namespace eval ::xowf {
         foreach {name value} [::xo::cc get_all_form_parameter] {
           if {[regexp {^__action_(.+)$} $name _ action]} {
             set ctx [::xowf::Context require [self]]
+            # Compute next state based on current values, not on result
+            # of action.
+            set next_state [${ctx}::$action get_next_state]
+            # Activate action
             if {[catch {${ctx}::$action activate [self]} errorMsg]} {
 	      set error "error in action '$action' of workflow instance [my name]\
 		of workflow [[my page_template] name]:"
@@ -710,9 +750,8 @@ namespace eval ::xowf {
 	      } else {
 		my msg -html 1 "$error <PRE>$::errorInfo</PRE>"
 	      }
-              my log "--- evaluation error $error\n$::errorInfo"
+              ns_log error "--WF: evaluation $error\n$::errorInfo"
             } else {
-              set next_state [${ctx}::$action get_next_state]
               #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
               if {$next_state ne ""} {
                 if {[${ctx}::$next_state exists assigned_to]} {
@@ -909,7 +948,8 @@ namespace eval ::xowf {
     return $m
   }
   WorkflowPage instproc wf_merged_form_constraints {constraints_from_form} {
-    return [my merge_constraints $constraints_from_form [my property form_constraints]]
+    return $constraints_from_form
+    #return [my merge_constraints $constraints_from_form [my property form_constraints]]
   }
   WorkflowPage instproc get_form_constraints {} {
     if {[my istype ::xowiki::FormPage] && [my is_wf]} {
