@@ -173,6 +173,8 @@ namespace eval ::xowf {
       set state [$obj state]
       if {$state eq ""} {set state initial}
       $name set_current_state $state
+      set connection_context [[$obj package_id] context]
+      $connection_context set embedded_context ::$name
     }
     return ::$name
   }
@@ -328,7 +330,7 @@ namespace eval ::xowf {
       if {[llength [$page set __unresolved_references]] > 0} {
 	# TODO: we should provide a link to create the missing forms. maybe we 
 	# change unresolved_references to a list..., or maybe we write these into the DB.
-	my msg "Missing forms: [join [$page set __unresolved_references] {, }]"
+	my msg -html t "Missing forms: [join [$page set __unresolved_references] {, }]"
       }
     }
     return [list rc 0]
@@ -1083,6 +1085,7 @@ namespace eval ::xowf {
 
 	if {[catch {::$package_id invoke -method edit -batch_mode 1} errorMsg]} {
           #my log "---call-action returns error $errorMsg"
+          ns_log error "$errorMsg\n$::errorInfo"
           error $errorMsg
         }
 	return "OK"
@@ -1227,7 +1230,7 @@ namespace eval ::xowf {
     } elseif {[catch {set msg [$page call_action \
                                    -action $action \
                                    -attributes $attributes]} errorMsg]} {
-      my log "Error: $uri $action $attributes resulted in\n$errorMsg"
+      my log "Error: $uri $action $attributes resulted in\n$errorMsg\n$::errorInfo"
       ns_return 406 text/plain "Error: $errorMsg\n"
     } else {
       ns_return 200 text/plain "Success: $msg\n"
