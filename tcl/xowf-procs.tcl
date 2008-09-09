@@ -109,13 +109,14 @@ namespace eval ::xowf {
     return [list form_id $form_id name $name]
   }
 
-  Context instproc form_id {parent_id} {
+  Context instproc form_object {object} {
+    set parent_id [$object parent_id]
     # After this method is activated, the form object of the form of
     # the current state is created and the instance variable form_id
     # is set.
     #
     # Load the actual form only once for this context.  We cache the
-    # form_id in the context.
+    # object name of the form in the context.
     #
     if {[my exists form_id]} {return [my set form_id]}
     # 
@@ -135,7 +136,29 @@ namespace eval ::xowf {
     }
     if {$form_id == 0} {
       #  todo: handle case, where form does not exist
-      my msg "cannot fetch form '[my form]' from folder $parent_id"
+      #my msg "cannot fetch form '[my form]' from folder $parent_id"
+      set vars [$object array names instance_attributes]
+      if {[llength $vars] == 0} {
+        #set template "AUTO form, no instance variables defined,<br>@_text@"
+        set template "@_text@"
+      } else {
+        set template "@[join $vars @,@]@<br>@_text@"
+      }
+      set package_id [$object package_id]
+      set form_id [::xowiki::Form new -destroy_on_cleanup \
+                    -package_id $package_id \
+                    -parent_id [$package_id folder_id] \
+                    -name "Auto-Form" \
+                    -anon_instances f \
+                    -form {} \
+                    -text [list $template text/html] \
+                    -form_constraints {}]
+    } else {
+      # be sure, to instantiate the form object
+      if {![my isobject ::$form_id]} {
+        ::xo::db::CrClass get_instance_from_db -item_id $form_id
+      }
+      set form_id ::$form_id
     }
     my set form_id $form_id
   }
@@ -166,17 +189,44 @@ namespace eval ::xowf {
   }
 
   Context proc require {obj} {
-    set name $obj-wfctx
-    if {![my isobject ::$name]} {
-      [self] create $name -destroy_on_cleanup -object $obj \
+    set ctx $obj-wfctx
+    if {![my isobject $ctx]} {
+      [self] create $ctx -destroy_on_cleanup -object $obj \
           -workflow_definition [$obj wf_property workflow_definition]
+
+      # set the state to a well defined starting point
       set state [$obj state]
       if {$state eq ""} {set state initial}
-      $name set_current_state $state
-      set connection_context [[$obj package_id] context]
-      $connection_context set embedded_context ::$name
+      $ctx set_current_state $state
+
+      # set the embedded context to the workflow context, 
+      # used e.g. by "behavior" of form-fields
+      [[$obj package_id] context] set embedded_context $ctx
+
+      if {[$ctx exists debug] && [$ctx set debug]>0} {
+        $ctx show_debug_info $obj
+      }
     }
-    return ::$name
+    return $ctx
+  }
+
+  Context instproc show_debug_info {obj} {
+    set form        [my form]
+    set view_method [my get_view_method]
+    set form_loader [my form_loader]
+    if {$form eq ""} {set form NONE}
+    if {$view_method eq ""} {set view_method NONE}
+    if {$form_loader eq ""} {set form_loader NONE}
+
+    $obj debug_msg "State: [my get_current_state], Form: $form,\
+		View method: $view_method, Form loader: $form_loader"
+
+    set conds [list]
+    foreach c [my defined Condition] {
+      lappend conds "[$c name] [$c]"
+    }
+    $obj debug_msg "Conditions: [join $conds {, }]"
+    $obj debug_msg "Instance attributes: [list [$obj instance_attributes]]"
   }
 
   Context instproc draw_arc {from_state next_state action label style} {
@@ -288,7 +338,7 @@ namespace eval ::xowf {
           }
         }
       }
-      if {[$s form_loader] eq ""} {
+      if {[$s form_loader] eq "" && [$s form] ne ""} {
         my set forms([$s form]) 1
       }
     }
@@ -616,16 +666,6 @@ namespace eval ::xowf {
   } {
     if {[my is_wf_instance]} {
       set ctx [::xowf::Context require [self]]
-      if {[$ctx exists debug] && [$ctx set debug]>0} {
-        my debug_msg "State: [my state], Form: [$ctx form],\
-		View method: [$ctx get_view_method], Form loader: [$ctx form_loader]"
-        set conds [list]
-        foreach c [$ctx defined Condition] {
-          lappend conds "[$c name] [$c]"
-        }
-        my debug_msg "Conditions: [join $conds {, }]"
-        my debug_msg "Instance attributes: [list [my instance_attributes]]"
-      }
     }
     next
   }
@@ -868,22 +908,15 @@ namespace eval ::xowf {
     if {[my exists $key]} { return [my set $key] }
     return ""
   }
-  WorkflowPage instproc get_form_id {} {
+  WorkflowPage instproc get_template_object {} {
     my instvar page_template
     if {[my is_wf_instance]} {
       set key __wfi(wf_form_id)
       if {![my exists $key]} {
 	set ctx [::xowf::Context require [self]]
-	my set $key [$ctx form_id [my parent_id]]
+	my set $key [$ctx form_object [self]]
       }
-      # TODO handle case, when form_id == 0
-      set form_id [my set $key]
-
-      # be sure, to instantiate as well page_template, some procs assume this
-      if {![my isobject ::$page_template]} {
-        ::xo::db::CrClass get_instance_from_db -item_id $page_template
-      }
-      return $form_id
+      return [my set $key]
     } else {
       return [next]
     }
