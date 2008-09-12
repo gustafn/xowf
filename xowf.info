@@ -7,18 +7,20 @@
     <initial-install-p>f</initial-install-p>
     <singleton-p>f</singleton-p>
     
-    <version name="0.12d" url="http://openacs.org/repository/download/apm/xowf-0.12d.apm">
+    <version name="0.13d" url="http://openacs.org/repository/download/apm/xowf-0.13d.apm">
         <owner url="mailto:neumann@wu-wien.ac.at">Gustaf Neumann</owner>
         <release-date>2008-09-09</release-date>
         <maturity>0</maturity>
 
-        <provides url="xowf" version="0.12d"/>
+        <provides url="xowf" version="0.13d"/>
         <requires url="xotcl-core" version="0.87"/>
         <requires url="xowiki" version="0.95"/>
 
         <callbacks>
         </callbacks>
         <parameters>
+            <parameter datatype="string"  min_n_values="1"  max_n_values="1"  name="parameter_page"  description="::xowiki::FormPage to search for parameters. The page name has to contain a language prefix and can refer to a different xowiki instance.
+Example: //xowiki/en:xowiki-standard-parameter"/>
             <parameter datatype="number"  min_n_values="1"  max_n_values="1"  name="use_hstore"  default="0" description="Use hstore for accessing instance attributes"/>
         </parameters>
 

@@ -96,7 +96,7 @@ namespace eval ::xowiki::includelet {
     $items mixin ::xo::ical::VCALENDAR
     $items configure -prodid "-//WU Wien//NONSGML XoWiki Content Flow//EN" 
     set text [$items as_ical]
-    my log "--ical sending $text"
+    #my log "--ical sending $text"
     #ns_return 200 text/calendar $text
     ns_return 200 text/plain $text
   }
