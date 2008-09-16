@@ -30,6 +30,22 @@ namespace eval ::xowf {
     next
     ::xowiki::FormPage instmixin add ::xowf::WorkflowPage
   }
+
+  Package instproc call {object method options} {
+    if {[$object istype ::xowiki::FormPage]} {
+      if {[$object is_wf_instance]} {
+        set ctx [::xowf::Context require $object]
+        #my msg "wfi: creating context form object $object = $ctx, chlds=[$ctx info children]"
+        #my msg "wfi: o $object has mixins [$object info mixin]"
+      } elseif {[$object is_wf]} {
+        set ctx [::xowf::Context require $object]
+        #my msg "wf: creating context form object $object = $ctx, chlds=[$ctx info children]"
+        #my msg "wf: o $object has mixins [$object info mixin]"
+      }
+    }
+    next
+  }
+
   Package ad_instproc destroy {} {
     remove mixin
   } {
@@ -202,8 +218,9 @@ namespace eval ::xowf {
       # set the embedded context to the workflow context, 
       # used e.g. by "behavior" of form-fields
       [[$obj package_id] context] set embedded_context $ctx
-
-      if {[$ctx exists debug] && [$ctx set debug]>0} {
+  
+      if {[$obj istype ::xowiki::FormPage] && [$obj is_wf_instance] 
+          && [$ctx exists debug] && [$ctx set debug]>0} {
         $ctx show_debug_info $obj
       }
     }
@@ -664,9 +681,6 @@ namespace eval ::xowf {
   WorkflowPage ad_instproc edit args {
     Hook for editing workflow pages
   } {
-    if {[my is_wf_instance]} {
-      set ctx [::xowf::Context require [self]]
-    }
     next
   }
 
