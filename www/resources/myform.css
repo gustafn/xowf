@@ -1,0 +1,11 @@
+.xowiki-content fieldset {
+    border: 1px solid #ccc;
+}
+.xowiki-content .margin-form fieldset .form-item-wrapper .form-label {
+    width: 10em;
+}
+.xowiki-content .margin-form  fieldset .form-item-wrapper .form-widget, 
+.xowiki-content .margin-form  fieldset .form-button, 
+.xowiki-content .margin-form  fieldset div.form-help-text {
+    margin-left: 11em;
+}

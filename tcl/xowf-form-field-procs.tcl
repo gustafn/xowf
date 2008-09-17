@@ -210,6 +210,11 @@ namespace eval ::xowiki::formfield {
     my set __initialized 1
   }
 
+  mc_exercise instproc render_input {} {
+    ::xo::Page requireCSS /resources/xowf/myform.css
+    next
+  }
+
   mc_exercise instproc pretty_value {v} {
     return [[my object] property form ""]
   }
