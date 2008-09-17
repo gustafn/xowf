@@ -170,7 +170,7 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class role_member -superclass FormField -superclass select -parameter {role}
+  Class role_member -superclass select -parameter {role}
   role_member instproc initialize {} {
     next
     my set is_party_id 1
@@ -185,4 +185,86 @@ namespace eval ::xowiki::formfield {
   role_member instproc pretty_value {v} {
     return [::xo::get_user_name $v]
   }
+}
+
+namespace eval ::xowiki::formfield {
+
+  ###########################################################
+  #
+  # ::xowiki::formfield::mc_exercise
+  #
+  ###########################################################
+
+  Class mc_exercise -superclass -superclass CompoundField -parameter {}
+
+  mc_exercise instproc initialize {} {
+    if {[my set __state] ne "after_specs"} return
+    my create_components  [subst {
+      {text  {richtext,required,editor=wym,height=150px,label=Angabe}}
+      {alt-1 {mc_alternative}}
+      {alt-2 {mc_alternative}}
+      {alt-3 {mc_alternative}}
+      {alt-4 {mc_alternative}}
+      {alt-5 {mc_alternative}}
+    }]
+    my set __initialized 1
+  }
+
+  mc_exercise instproc pretty_value {v} {
+    return [[my object] property form ""]
+  }
+
+  mc_exercise instproc process_user_input {} {
+    #
+    # Build a from from the componets of the exercise on the fly.
+    # Actually, this methods computes the properties "form" and
+    # "form_constraints" based on the components of this form field.
+    # 
+    set form "<FORM>\n<table rules='all' bordercolor='#dddddd' border='1'>\n<tbody>"
+    set fc "@categories:off @cr_fields:hidden\n"
+    set intro_text [[my get_named_sub_component text] value]
+    append form "<tr><td colspan='2'>$intro_text</td></tr>\n"
+    foreach alt {alt-1 alt-2 alt-3 alt-4 alt-5} {
+      foreach f {text correct feedback_correct feedback_incorrect} {
+        set value($f) [[my get_named_sub_component $alt $f] value]
+      }
+      append form \
+          "<tr><td class='mchoice_selection'><input type='checkbox' name='$alt' /></td>\n" \
+          "<td class='mchoice_value'>$value(text)</td></tr>\n"
+      set alt_fc [list]
+      if {$value(correct)} {lappend alt_fc "answer=on"}
+      if {$value(feedback_correct) ne ""} {
+        lappend alt_fc "feedback_answer_correct=[::xowiki::formfield::FormField fc_encode $value(feedback_correct)]"
+      }
+      if {$value(feedback_incorrect) ne ""} {
+        lappend alt_fc "feedback_answer_incorrect=[::xowiki::formfield:::FormField fc_encode $value(feedback_incorrect)]"
+      }
+      if {[llength $alt_fc] > 0} {append fc [list $alt:[join $alt_fc ,]]\n}
+      #my msg "$alt .correct = $value(correct)"
+    }
+    append form "</tbody></table></FORM>\n"
+    [my object] set_property -new 1 form $form
+    [my object] set_property -new 1 form_constraints $fc
+    my set __refresh_instance_attributes [list form $form form_constraints $fc]
+  }
+
+  ###########################################################
+  #
+  # ::xowiki::formfield::mc_alternative
+  #
+  ###########################################################
+
+  Class mc_alternative -superclass -superclass CompoundField -parameter {}
+
+  mc_alternative instproc initialize {} {
+    if {[my set __state] ne "after_specs"} return
+    my create_components [subst {
+      {text  {textarea,label=Text}}
+      {correct {boolean,horizontal=true,label=Korrekt}}
+      {feedback_correct {textarea,label=Feedback korrekt}}
+      {feedback_incorrect {textarea,label=Feedback inkorrekt}}
+    }]
+    my set __initialized 1
+  }
+
 }
