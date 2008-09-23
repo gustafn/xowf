@@ -25,8 +25,7 @@ namespace eval ::xowf {
   Package ad_instproc initialize {} {
     mixin ::xowf::WorkflowPage to every FormPage
   } {
-    #my msg ""
-    # called, whenever package is initialized 
+    # This method is called, whenever an xowf package is initialized.
     next
     ::xowiki::FormPage instmixin add ::xowf::WorkflowPage
   }
@@ -49,7 +48,14 @@ namespace eval ::xowf {
   Package ad_instproc destroy {} {
     remove mixin
   } {
-    ::xowiki::FormPage instmixin delete ::xowf::WorkflowPage
+    #
+    # In general, it is possible, that multiple xowf packages are
+    # concurrently active in one thread. We want to remove the mixin
+    # only, when the last instance is deleted.
+    #
+    if {[llength [[self class] allinstances]] == 1} {
+      ::xowiki::FormPage instmixin delete ::xowf::WorkflowPage
+    }
     next
   }
 
@@ -1247,8 +1253,8 @@ namespace eval ::xowf {
 #     the requests. These procs overload the predefined behavior.
 #
 
-
 namespace eval ::xowf {
+  # ::xo::dav should be probably changed to ::xo::ProtocolHandler for release
   ::xotcl::Class create ::xowf::dav -superclass ::xo::dav
 
   ::xowf::dav instproc get_package_id {} {
