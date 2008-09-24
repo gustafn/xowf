@@ -178,8 +178,15 @@ namespace eval ::xowiki::formfield {
   role_member instproc render_input {} {
     my instvar role
     #my msg role=$role,obj=[my object]
-    my set options [::xo::role::$role get_members -object_id [[my object] package_id]]
-    #foreach m $members { my lappend options [list [::xo::get_user_name $m] $m] }
+    if {[info command ::xo::role::$role] ne ""} {
+      my set options [::xo::role::$role get_members -object_id [[my object] package_id]]
+    } elseif {[set gid [group::get_id -group_name $role]] ne ""} {
+      my set options [list]
+      foreach m [group::get_members -group_id $gid] {
+        my lappend options [list [::xo::get_user_name $m] $m] }
+    } else {
+      error "no such role or group '$role'"
+    }
     next
   }
   role_member instproc pretty_value {v} {
