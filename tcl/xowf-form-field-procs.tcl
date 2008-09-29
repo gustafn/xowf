@@ -226,7 +226,7 @@ namespace eval ::xowiki::formfield {
     return [[my object] property form ""]
   }
 
-  mc_exercise instproc process_user_input {} {
+  mc_exercise instproc convert_to_internal {} {
     #
     # Build a from from the componets of the exercise on the fly.
     # Actually, this methods computes the properties "form" and
