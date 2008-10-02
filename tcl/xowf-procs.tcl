@@ -647,15 +647,16 @@ namespace eval ::xowf {
       ::xo::Page requireCSS /resources/xowf/feedback.css
       set form [lindex [$dom_root selectNodes "//form"] 0]
       $form setAttribute class "[$form getAttribute class] feedback"
+      #
+      # Iterate over alternatives to give feedback per alternative
+      #
       foreach f $form_field {
-        if {![$f exists answer]} continue
-        if {[$f answer] eq [$f value]} {
-          set feedback "correct"
-          if {[$f exists feedback_answer_correct]} {set feedback [$f feedback_answer_correct]}
-        } else {
-          set feedback "incorrect"
-          if {[$f exists feedback_answer_incorrect]} {set feedback [$f feedback_answer_incorrect]}
+        switch [$f answer_is_correct] {
+           0 { continue }
+          -1 { set feedback "incorrect"}
+           1 { set feedback "correct"  }
         }
+        if {[$f exists feedback_answer_$feedback]} {set feedback [$f feedback_answer_$feedback]}
         $f form-widget-CSSclass $feedback
         $f help_text [$f form-widget-CSSclass]
         foreach n [$dom_root selectNodes "//form//*\[@name='[$f name]'\]"] {
@@ -663,6 +664,9 @@ namespace eval ::xowf {
           $n setAttribute class [string trim "$oldCSSClass [$f form-widget-CSSclass]"]
         }
       }
+      #
+      # Proivde feedback for the whole exercise
+      #
       if {[my answer_is_correct]} {
         set feedback [my get_from_template feedback_correct]
       } else {
@@ -859,8 +863,7 @@ namespace eval ::xowf {
   } {
     set correct 1
     foreach f [my instantiated_form_fields] {
-      if {![$f exists answer]} continue
-      if {[$f value] ne [$f answer]} {
+      if {[$f answer_is_correct] != 1} {
         set correct 0
         break
       }
