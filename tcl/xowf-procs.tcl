@@ -651,7 +651,7 @@ namespace eval ::xowf {
       # Iterate over alternatives to give feedback per alternative
       #
       foreach f $form_field {
-        switch [$f answer_is_correct] {
+        switch -- [$f answer_is_correct] {
            0 { continue }
           -1 { set feedback "incorrect"}
            1 { set feedback "correct"  }
@@ -711,7 +711,7 @@ namespace eval ::xowf {
       if {$method ne "" && $method ne "view"} {
         my instvar package_id
         #my msg "view redirects to $method in state [$ctx get_current_state]"
-        switch $method {
+        switch -- $method {
           view_user_input {
             return [$package_id call [self] edit [list -disable_input_fields 1]]
           }
