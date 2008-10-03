@@ -674,6 +674,25 @@ namespace eval ::xowf {
       ::xo::Page requireCSS /resources/xowf/feedback.css
       set form [lindex [$dom_root selectNodes "//form"] 0]
       $form setAttribute class "[$form getAttribute class] feedback"
+
+      #
+      # In cases, where the HTML exercise was given, we process the HTML
+      # to flag the result. 
+      #
+      # TODO: what should we do with the feedback. util-user-message not optimal...
+      #
+      foreach f $form_fields {
+        if {[$f exists __rendered]} continue
+        if {[$f exists evaluated_answer_result]} {
+          set result [$f set evaluated_answer_result]
+          foreach n [$dom_root selectNodes "//form//*\[@name='[$f name]'\]"] {
+            set oldCSSClass [expr {[$n hasAttribute class] ? [$n getAttribute class] : ""}]
+            $n setAttribute class [string trim "$oldCSSClass [$f form-widget-CSSclass]"]
+            $f form-widget-CSSclass $result
+            util_user_message -message "field [$f name], value [$f value]: [$f help_text]"
+          }
+        }
+      }
       #
       # Provide feedback for the whole exercise
       #
