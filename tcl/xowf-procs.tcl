@@ -638,7 +638,34 @@ namespace eval ::xowf {
     }
   }
 
-  WorkflowPage ad_instproc post_process_edit_fields {dom_root form_field} {
+  WorkflowPage ad_instproc post_process_form_fields {form_fields} {
+  } {
+    if {[my exists __feedback_mode]} {
+      #
+      # Provide feedback for every alternative
+      #
+      foreach f $form_fields {
+        #my msg "[$f name]: correct? [$f answer_is_correct]"
+        switch -- [$f answer_is_correct] {
+           0 { continue }
+          -1 { set result "incorrect"}
+           1 { set result "correct"  }
+        }
+        $f form-widget-CSSclass $result
+        $f set evaluated_answer_result $result
+
+        set feedback ""
+        if {[$f exists feedback_answer_$result]} {
+          set feedback [$f feedback_answer_$result]
+        } else {
+          set feedback [_ xowf.answer_$result]
+        }
+        $f help_text $feedback
+      }
+    }
+  }
+
+  WorkflowPage ad_instproc post_process_dom_tree {dom_doc dom_root form_fields} {
     post-process form in edit mode to provide feedback in feedback mode
   } {
     # In feedback mode, we set the CSS class to correct or incorrect
@@ -648,24 +675,7 @@ namespace eval ::xowf {
       set form [lindex [$dom_root selectNodes "//form"] 0]
       $form setAttribute class "[$form getAttribute class] feedback"
       #
-      # Iterate over alternatives to give feedback per alternative
-      #
-      foreach f $form_field {
-        switch -- [$f answer_is_correct] {
-           0 { continue }
-          -1 { set feedback "incorrect"}
-           1 { set feedback "correct"  }
-        }
-        if {[$f exists feedback_answer_$feedback]} {set feedback [$f feedback_answer_$feedback]}
-        $f form-widget-CSSclass $feedback
-        $f help_text [$f form-widget-CSSclass]
-        foreach n [$dom_root selectNodes "//form//*\[@name='[$f name]'\]"] {
-          set oldCSSClass [expr {[$n hasAttribute class] ? [$n getAttribute class] : ""}]
-          $n setAttribute class [string trim "$oldCSSClass [$f form-widget-CSSclass]"]
-        }
-      }
-      #
-      # Proivde feedback for the whole exercise
+      # Provide feedback for the whole exercise
       #
       if {[my answer_is_correct]} {
         set feedback [my get_from_template feedback_correct]
