@@ -124,7 +124,7 @@ namespace eval ::xowf {
     set ansi_time [$class ansi_time [clock scan [my time]]]
     if {![info exists party_id]} {my party_id [::xo::cc set untrusted_user_id]}
 
-    set form_id [::xowf::atjob form_id -parent_id [[my object] parent_id]]
+    set form_id [$class form_id -package_id $package_id -parent_id [[my object] parent_id]]
     if {$form_id != 0} {
       ::xo::db::CrClass get_instance_from_db -item_id $form_id
       set instance_attributes [$form_id default_instance_attributes]
@@ -143,15 +143,19 @@ namespace eval ::xowf {
     }
   }
 
-  atjob proc form_id {-parent_id} {
+  atjob proc form_id {-parent_id -package_id} {
     set form_name en:atjob-form
     set form_id [::xo::db::CrClass lookup -name $form_name -parent_id $parent_id]
     if {$form_id == 0} {
-      ns_log error "Cannot lookup form $form_name; ignore request"
+      set page [$package_id resolve_page $form_name __m]
+      if {$page ne ""} {set form_id [$page item_id]}
+      if {$form_id == 0} {
+        ns_log error "Cannot lookup form $form_name; ignore request"
+      }
     }
     return $form_id
   }
-
+  
   atjob proc check {{-with_older false}} {
     my log "--at START"
     #
