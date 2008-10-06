@@ -112,15 +112,12 @@ namespace eval ::xowf {
   # delete from acs_object_types where object_type = '::xowf::atjob';
   # drop table xowf_atjob;
 
-  atjob set form_name en:atjob-form
-
   atjob instproc persist {} {
     my instvar party_id cmd
 
     set class [self class]
     set owner_id [[my object] item_id]
     set package_id [[my object] package_id]
-    #set sql_timestamp [$class sql_timestamp [clock scan [my time]]]
     set ansi_time [$class ansi_time [clock scan [my time]]]
     if {![info exists party_id]} {my party_id [::xo::cc set untrusted_user_id]}
 
@@ -211,8 +208,8 @@ namespace eval ::xowf {
       $package_id set_url -url [$package_id package_url][$owner_id name]
 
       my log "--at executing atjob $cmd"
-      if {[catch {eval $cmd} errorMsg]} {
-        ns_log error "\n*** atjob $cmd lead to error ***\n$errorMsg"
+      if {[catch {eval $owner_id $cmd} errorMsg]} {
+        ns_log error "\n*** atjob $owner_id $cmd lead to error ***\n$errorMsg"
       } else {
         $item set_live_revision -revision_id [$item revision_id] -publish_status "expired"
       }

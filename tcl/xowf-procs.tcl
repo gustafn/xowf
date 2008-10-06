@@ -1207,7 +1207,7 @@ namespace eval ::xowf {
     }
     if {![info exists party_id]} {set party_id [::xo::cc user_id]}
     my schedule_job -time $time -party_id $party_id \
-        [list [self] call_action -action $action -attributes $attributes]
+        [list call_action -action $action -attributes $attributes]
   }
 
  
