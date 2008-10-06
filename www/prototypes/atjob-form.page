@@ -1,0 +1,18 @@
+# -*- tcl-*-
+::xowiki::Form new \
+    -set name en:atjob-form \
+    -title "At-Job Form" \
+    -set anon_instances t \
+    -set text {} \
+    -set form {{<form>@_title@ @cmd@ @_publish_date@ @_publish_status@</form>} text/html} \
+    -set form_constraints {
+_page_order:hidden _creator:hidden
+_title:text,label=#acs-kernel.common_Title#
+{_publish_date:date,format=DD_MONTH_YYYY_HH24_MI,label=Scheduled execution time}
+{_publish_status:radio,options={waiting production} {done expired},label=Status}
+@table_properties:publish_status=all
+@table:_name,_publish_status,_last_modified
+   }
+
+
+
