@@ -59,6 +59,17 @@ namespace eval ::xowf {
     next
   }
 
+#   Package instproc delete {-item_id -name} {
+#     # Provide a method to delete the foreign key references, when
+#     # an item for an atjob is deleted. We do here the same magic
+#     # as in ::xowiki::Package to obtain the item_id
+#     if {![info exists item_id]} {set item_id [my query_parameter item_id]}
+#     if {$item_id ne ""} {
+#       db_dml dbqd..xowf_delete "delete from xowf_atjob where owner_id = :item_id"
+#     }
+#     next
+#   }
+
   #
   # Workflow Context
   #
@@ -864,7 +875,7 @@ namespace eval ::xowf {
       next
     }
   }
-
+  
   WorkflowPage instproc instantiated_form_fields {} {
     # Helper method to
     #  - obtain the field_names from the current form, to
@@ -1159,6 +1170,7 @@ namespace eval ::xowf {
     set ctx [::xowf::Context require [self]]
     foreach a [$ctx get_actions] {
       if {[namespace tail $a] eq "$action"} {
+        #my log "--xowf action $action allowed -- name='[my name]'"
 	# In the current state, the specified action is allowed, so
 	# fake a work request with the given instance attributes 
 	::xo::cc array set form_parameter \
@@ -1180,6 +1192,35 @@ namespace eval ::xowf {
 	[[my page_template] name] in state [$ctx get_current_state]
 	Available actions: [[$ctx current_state] get_actions]"
   }
+
+  #
+  # Interface to atjobs
+  #
+  WorkflowPage ad_instproc schedule_action {-time -party_id -action {-attributes {}}} {
+    Schedule the specified action for the current workflow instance at the given
+    time. The specified attributes are provided like form_parameters to
+    the action of the workflow.
+  } {
+    my instvar package_id
+    if {![my is_wf_instance]} {
+      error "Page [self] is not a Workflow Instance"
+    }
+    if {![info exists party_id]} {set party_id [::xo::cc user_id]}
+    my schedule_job -time $time -party_id $party_id \
+        [list [self] call_action -action $action -attributes $attributes]
+  }
+
+ 
+  WorkflowPage ad_instproc schedule_job {-time:required -party_id cmd} {
+    Schedule the specified tcl command for the the current package
+    instance at the given time.
+  } {
+    my instvar package_id
+    my log "-at"
+    set j [::xowf::atjob new -time $time -party_id $party_id -cmd $cmd -object [self]]
+    $j persist
+  }
+
 
 
   ad_proc migrate_from_wf_current_state {} {
@@ -1264,6 +1305,8 @@ namespace eval ::xowf {
 
 }
 
+
+
 #
 # In order to provide either a REST or a DAV interface, we have to 
 # switch to basic authentication, since non-openacs packages 
@@ -1339,5 +1382,6 @@ namespace eval ::xowf {
 #     my call_action -uri $uri -action work -attributes [list comment hello3 effort 4]
 #   }
 
-
 }
+
+
