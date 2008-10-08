@@ -753,11 +753,13 @@ namespace eval ::xowf {
         #my msg "view redirects to $method in state [$ctx get_current_state]"
         switch -- $method {
           view_user_input {
-            return [$package_id call [self] edit [list -disable_input_fields 1]]
+            return [my edit -disable_input_fields 1]
+            #return [$package_id call [self] edit [list -disable_input_fields 1]]
           }
           view_user_input_with_feedback {
             my set __feedback_mode 1
-            return [$package_id call [self] edit [list -disable_input_fields 1]]
+            return [my edit -disable_input_fields 1]
+            #return [$package_id call [self] edit [list -disable_input_fields 1]]
           }
           default {return [$package_id invoke -method $method]}
         }
@@ -1209,7 +1211,6 @@ namespace eval ::xowf {
     my schedule_job -time $time -party_id $party_id \
         [list call_action -action $action -attributes $attributes]
   }
-
  
   WorkflowPage ad_instproc schedule_job {-time:required -party_id cmd} {
     Schedule the specified tcl command for the the current package
@@ -1220,7 +1221,6 @@ namespace eval ::xowf {
     set j [::xowf::atjob new -time $time -party_id $party_id -cmd $cmd -object [self]]
     $j persist
   }
-
 
 
   ad_proc migrate_from_wf_current_state {} {
