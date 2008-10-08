@@ -236,9 +236,24 @@ namespace eval ::xowf {
       # used e.g. by "behavior" of form-fields
       [[$obj package_id] context] set embedded_context $ctx
   
-      if {[$obj istype ::xowiki::FormPage] && [$obj is_wf_instance] 
-          && [$ctx exists debug] && [$ctx set debug]>0} {
-        $ctx show_debug_info $obj
+      if {[$obj istype ::xowiki::FormPage] && [$obj is_wf_instance]} { 
+        #
+        # The workflow instance may have the following variables:
+        #   - "debug" 
+        #   - "policy"
+        #
+        if {[$ctx exists debug] && [$ctx set debug]>0} {
+          $ctx show_debug_info $obj
+        }
+        if {[$ctx exists policy]} {
+          set policy [$ctx set policy]
+          if {![my isobject $policy]} {
+            my msg "ignore non-existent policy '$policy'"
+          } else {
+            [$obj package_id] set policy $policy
+            #my msg new-pol=[[$obj package_id]  set policy ]
+          }
+        }
       }
     }
     return $ctx
