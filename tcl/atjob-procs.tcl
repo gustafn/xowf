@@ -126,10 +126,12 @@ namespace eval ::xowf {
       ::xo::db::CrClass get_instance_from_db -item_id $form_id
       set instance_attributes [$form_id default_instance_attributes]
       lappend instance_attributes cmd $cmd
+      set name [::xowiki::autoname new -name [$form_id name] -parent_id $owner_id] 
       set f [::xowiki::FormPage new -destroy_on_cleanup \
                  -package_id $package_id \
                  -parent_id $owner_id \
-                 -nls_language [[my object] nls_language] \
+                 -name $name \
+                 -nls_language [$form_id nls_language] \
                  -publish_status "production" \
                  -publish_date $ansi_time \
                  -creation_user $party_id \
