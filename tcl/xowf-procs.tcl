@@ -168,8 +168,6 @@ namespace eval ::xowf {
       #my msg form_id=$form_id
     }
     if {$form_id == 0} {
-      #  todo: handle case, where form does not exist
-      #my msg "cannot fetch form '[my form]' from folder $parent_id"
       set vars [$object array names instance_attributes]
       if {[llength $vars] == 0} {
         #set template "AUTO form, no instance variables defined,<br>@_text@"
@@ -411,6 +409,7 @@ namespace eval ::xowf {
       set page [my object]
       $page set unresolved_references 0
       $page set __unresolved_references [list]
+      $page set __unresolved_object_type ::xowiki::Form
       foreach {type pages} [list wf_form [my array names forms] wf_parampage [my array names parampages]] {
         foreach p $pages {
           array set "" [my resolve_form_name $p [$page parent_id]]
