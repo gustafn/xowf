@@ -181,7 +181,7 @@ namespace eval ::xowf {
                     -package_id $package_id \
                     -parent_id [$package_id folder_id] \
                     -name "Auto-Form" \
-                    -anon_instances f \
+                    -anon_instances [expr {[my exists autoname] ? [my set autoname] : "f"}] \
                     -form {} \
                     -text [list $template text/html] \
                     -form_constraints {}]
@@ -240,10 +240,17 @@ namespace eval ::xowf {
         # The workflow instance may have the following variables:
         #   - "debug" 
         #   - "policy"
+        #   - "autoname"
         #
         if {[$ctx exists debug] && [$ctx set debug]>0} {
           $ctx show_debug_info $obj
         }
+        # anything to do?
+        #if {[$ctx exists autoname]} {
+        #  my msg obj=[$obj info class],obj=$obj
+        #  #my set_new_property anon_instances t
+        #}
+
         if {[$ctx exists policy]} {
           set policy [$ctx set policy]
           if {![my isobject $policy]} {
@@ -364,10 +371,16 @@ namespace eval ::xowf {
   }
 
   Context instproc check {} {
+    # Check minimal contents
+    if {![my isobject [self]::initial] || ![[self]::initial istype State]} {
+      return [list rc 1 errorMsg "No State 'initial' defined"]
+    }
+    # ease access to workflow constructs
     foreach s [my defined State]     {set state([$s name])  $s}
     foreach a [my defined Action]    {set action([$a name]) $a}
     foreach a [my defined Condition] {set condition([$a name]) $a}
     array set condition {else 1 true 1 default 1}
+    # Check actions
     foreach a [my defined Action] {
       # Are some "next_states" undefined?
       foreach {cond value} [$a get_cond_values [$a next_state]] {
@@ -1057,9 +1070,7 @@ namespace eval ::xowf {
       }
       # save instance attributes
       set instance_attributes [array get __ia]
-
       #my msg ia=$instance_attributes,props=[$ctx defined Property]
-      set next_state [my activate $ctx initialize]
 
       my state [$ctx get_current_state]
       #my msg "setting initial state to '[my state]'"
