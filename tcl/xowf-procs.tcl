@@ -84,8 +84,9 @@ namespace eval ::xowf {
   
   # forward property to the workflow object
   Context instforward property {%my object} %proc
-  Context instforward set_property {%my object} %proc
   Context instforward get_property {%my object} %proc
+  Context instforward set_property {%my object} %proc
+  Context instforward set_new_property {%my object} set_property -new 1
 
   # forward form_constraints, view_method and for the to current state object
   Context instforward get_form_constraints {%my current_state} form_constraints
@@ -328,7 +329,12 @@ namespace eval ::xowf {
       }
       append result "  state_[$s name] \[label=\"[$s label]\"$color\];\n"
     }
-    append result "start->state_initial;"
+    if {[my isobject [self]::initialize]} {
+      append result "start->state_initial \[label=\"[[self]::initialize label]\"\];\n"
+    } else {
+      append result "start->state_initial;\n"
+    }
+
     my set condition_count 0
     foreach s [my defined State] {
       foreach a [$s get_actions -set true] {
@@ -447,8 +453,9 @@ namespace eval ::xowf {
   #WorkflowConstruct ad_instforward property     {get property} {%[my info parent] object} %proc
   #WorkflowConstruct ad_instforward set_property {set property} {%[my info parent] object} %proc
 
-  WorkflowConstruct instforward property     {%[my info parent] object} %proc
-  WorkflowConstruct instforward set_property {%[my info parent] object} %proc
+  WorkflowConstruct instforward property         {%[my info parent] object} %proc
+  WorkflowConstruct instforward set_property     {%[my info parent] object} %proc
+  WorkflowConstruct instforward set_new_property {%[my info parent] object} set_property -new 1
 
   WorkflowConstruct instproc in_role {role configuration} {
     set ctx [my info parent]
@@ -851,6 +858,34 @@ namespace eval ::xowf {
     
   }
 
+  WorkflowPage instproc activate {ctx action} {
+    # Execute action and compute next state
+    # of action.
+    set action_command ${ctx}::$action
+    # Check, if action is defined
+    if {[info command $action_command] eq ""} {
+      # no such action the current context
+      ns_log notice "No action $action in workflow context"
+      return ""
+    }
+    set next_state [$action_command get_next_state]
+    # Activate action
+    if {[catch {$action_command activate [self]} errorMsg]} {
+      set error "error in action '$action' of workflow instance [my name]\
+		of workflow [[my page_template] name]:"
+      if {[[my package_id] exists __batch_mode]} {
+        [my package_id] set __evaluation_error "$error\n\n$::errorInfo"
+        incr validation_errors
+      } else {
+        my msg -html 1 "$error <PRE>$::errorInfo</PRE>"
+      }
+      ns_log error "--WF: evaluation $error\n$::errorInfo"
+      return ""
+    } else {
+      return $next_state
+    }
+  }
+
   WorkflowPage instproc get_form_data args {
     if {[my is_wf_instance]} {
       foreach {validation_errors category_ids} [next] break
@@ -859,31 +894,16 @@ namespace eval ::xowf {
         foreach {name value} [::xo::cc get_all_form_parameter] {
           if {[regexp {^__action_(.+)$} $name _ action]} {
             set ctx [::xowf::Context require [self]]
-            # Compute next state based on current values, not on result
-            # of action.
-            set next_state [${ctx}::$action get_next_state]
-            # Activate action
-            if {[catch {${ctx}::$action activate [self]} errorMsg]} {
-	      set error "error in action '$action' of workflow instance [my name]\
-		of workflow [[my page_template] name]:"
-	      if {[[my package_id] exists __batch_mode]} {
-		[my package_id] set __evaluation_error "$error\n\n$::errorInfo"
-		incr validation_errors
-	      } else {
-		my msg -html 1 "$error <PRE>$::errorInfo</PRE>"
-	      }
-              ns_log error "--WF: evaluation $error\n$::errorInfo"
-            } else {
-              #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
-              if {$next_state ne ""} {
-                if {[${ctx}::$next_state exists assigned_to]} {
-                  my assignee [my get_assignee [${ctx}::$next_state assigned_to]]
-                }
-                $ctx set_current_state $next_state
+            set next_state [my activate $ctx $action]
+            #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
+            if {$next_state ne ""} {
+              if {[${ctx}::$next_state exists assigned_to]} {
+                my assignee [my get_assignee [${ctx}::$next_state assigned_to]]
               }
+              $ctx set_current_state $next_state
             }
-            break
           }
+          break
         }
       }
       return [list $validation_errors $category_ids]
@@ -1000,13 +1020,27 @@ namespace eval ::xowf {
       return [next]
     }
   }
+
+  WorkflowPage instproc initialize {} {
+    if {[my is_wf_instance]} {
+      # a new workflow instance was created.
+      set ctx [::xowf::Context require [self]]
+      my activate $ctx initialize
+      # Ignore the returned next_state, since the initial state is
+      # always set to the same value from the ctx (initial)
+
+      #my msg "is=[my set instance_attributes]"
+    }
+    next
+  }
+
   WorkflowPage instproc default_instance_attributes {} {
     # Provide the default list of instance attributes to derived 
     # FormPages.
     if {[my is_wf]} {
       #
-      # we have a workflow page
-      # get the initial state from the workflow
+      # We have a workflow page. Get the initial state of the workflow
+      # instance from the workflow.
       #
       set ctx [::xowf::Context require [self]]
       foreach p [$ctx defined ::xowiki::formfield::FormField] {
@@ -1021,11 +1055,15 @@ namespace eval ::xowf {
           set __ia($name) $value
         }
       }
-      # set always the current state to the value from the ctx (initial)
+      # save instance attributes
+      set instance_attributes [array get __ia]
+
+      #my msg ia=$instance_attributes,props=[$ctx defined Property]
+      set next_state [my activate $ctx initialize]
+
       my state [$ctx get_current_state]
       #my msg "setting initial state to '[my state]'"
-      set instance_attributes [array get __ia]
-      #my msg ia=$instance_attributes,props=[$ctx defined Property]
+ 
       return $instance_attributes
     } else {
       next
