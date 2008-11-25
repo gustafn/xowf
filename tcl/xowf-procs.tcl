@@ -915,8 +915,8 @@ namespace eval ::xowf {
               }
               $ctx set_current_state $next_state
             }
+            break
           }
-          break
         }
       }
       return [list $validation_errors $category_ids]
