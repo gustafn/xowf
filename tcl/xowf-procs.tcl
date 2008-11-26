@@ -734,7 +734,15 @@ namespace eval ::xowf {
             set oldCSSClass [expr {[$n hasAttribute class] ? [$n getAttribute class] : ""}]
             $n setAttribute class [string trim "$oldCSSClass [$f form-widget-CSSclass]"]
             $f form-widget-CSSclass $result
-            util_user_message -message "field [$f name], value [$f value]: [$f help_text]"
+
+            set helpText [$f help_text]
+            if {$helpText ne ""} {
+              set divNode [$dom_doc createElement div]
+              $divNode setAttribute class [$f form-widget-CSSclass]
+              $divNode appendChild [$dom_doc createTextNode $helpText]
+              [$n parentNode] insertBefore $divNode [$n nextSibling]
+              util_user_message -message "field [$f name], value [$f value]: $helpText"
+            }
           }
         }
       }

@@ -244,7 +244,7 @@ namespace eval ::xowiki::formfield {
           "<tr><td class='mchoice_selection'><input type='checkbox' name='$alt' /></td>\n" \
           "<td class='mchoice_value'>$value(text)</td></tr>\n"
       set alt_fc [list]
-      if {$value(correct)} {lappend alt_fc "answer=on"}
+      if {$value(correct)} {lappend alt_fc "answer=on"} else {lappend alt_fc "answer="}
       if {$value(feedback_correct) ne ""} {
         lappend alt_fc "feedback_answer_correct=[::xowiki::formfield::FormField fc_encode $value(feedback_correct)]"
       }
