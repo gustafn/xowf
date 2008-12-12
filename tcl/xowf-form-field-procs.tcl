@@ -245,7 +245,11 @@ namespace eval ::xowiki::formfield {
     append form "<tr><td class='text' colspan='2'>$intro_text</td></tr>\n"
     foreach alt {alt-1 alt-2 alt-3 alt-4 alt-5} {
       foreach f {text correct feedback_correct feedback_incorrect} {
-        set value($f) [[my get_named_sub_component $alt $f] value]
+	if {[my exists_named_sub_component $alt $f]} {
+	  set value($f) [[my get_named_sub_component $alt $f] value]
+	} else {
+	  set value($f) ""
+	}
       }
       append form \
           "<tr><td class='selection'><input type='checkbox' name='$alt' /></td>\n" \
