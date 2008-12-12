@@ -1068,7 +1068,8 @@ namespace eval ::xowf {
 	# exists in the current folder.
 	
 	# TODO why can it be, that string-range below differs from [my lang]?
-	set default_lang [string range [my nls_language] 0 1]
+	set nls_language [my nls_language]
+	set default_lang [string range $nls_language 0 1]
 	$package_id get_lang_and_name -default_lang $default_lang -name $name lang stripped_name
 	set id [::xo::db::CrClass lookup -name $lang:$stripped_name -parent_id [$package_id folder_id]]
 	#my msg "lookup of $lang:$stripped_name returned $id, default-lang([my name])=$default_lang [my nls_language]"
@@ -1078,8 +1079,16 @@ namespace eval ::xowf {
 		      [export_vars -base [$package_id pretty_link $lang:$stripped_name] \
 			   [list return_url template_file]]]
 	} else {
+	  if {$lang ne $default_lang} {
+	    #
+	    # Guess nls_language from lang
+	    #
+	    foreach nls_language [lang::system::get_locales] {
+	      if {[string range [my nls_language] 0 1] eq $lang} break
+	    }
+	  }
 	  #my msg "We want to create $lang:$stripped_name"
-	  return [next -name $lang:$stripped_name -nls_language [my nls_language]]
+	  return [next -name $lang:$stripped_name -nls_language $nls_language]
 	}
       }
     }
