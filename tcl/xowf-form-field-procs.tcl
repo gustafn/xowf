@@ -202,17 +202,24 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class mc_exercise -superclass -superclass CompoundField -parameter {}
+  Class mc_exercise -superclass -superclass CompoundField -parameter {{feedback full}}
 
   mc_exercise instproc initialize {} {
     if {[my set __state] ne "after_specs"} return
+    set javascript [::xowiki::formfield::FormField fc_encode { 
+      xinha_config.toolbar = [ 
+			      ['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
+			      ['killword','removeformat'] 
+			     ]; 
+    }]
+    my instvar feedback
     my create_components  [subst {
-      {text  {richtext,required,editor=wym,height=150px,label=Angabe}}
-      {alt-1 {mc_alternative}}
-      {alt-2 {mc_alternative}}
-      {alt-3 {mc_alternative}}
-      {alt-4 {mc_alternative}}
-      {alt-5 {mc_alternative}}
+      {text  {richtext,required,editor=xinha,height=150px,label=Angabe,plugins=OacsFs,javascript=$javascript}}
+      {alt-1 {mc_alternative,feedback=$feedback}}
+      {alt-2 {mc_alternative,feedback=$feedback}}
+      {alt-3 {mc_alternative,feedback=$feedback}}
+      {alt-4 {mc_alternative,feedback=$feedback}}
+      {alt-5 {mc_alternative,feedback=$feedback}}
     }]
     my set __initialized 1
   }
@@ -232,17 +239,17 @@ namespace eval ::xowiki::formfield {
     # Actually, this methods computes the properties "form" and
     # "form_constraints" based on the components of this form field.
     # 
-    set form "<FORM>\n<table rules='all' bordercolor='#dddddd' border='1'>\n<tbody>"
+    set form "<FORM>\n<table class='mchoice'>\n<tbody>"
     set fc "@categories:off @cr_fields:hidden\n"
     set intro_text [[my get_named_sub_component text] value]
-    append form "<tr><td colspan='2'>$intro_text</td></tr>\n"
+    append form "<tr><td class='text' colspan='2'>$intro_text</td></tr>\n"
     foreach alt {alt-1 alt-2 alt-3 alt-4 alt-5} {
       foreach f {text correct feedback_correct feedback_incorrect} {
         set value($f) [[my get_named_sub_component $alt $f] value]
       }
       append form \
-          "<tr><td class='mchoice_selection'><input type='checkbox' name='$alt' /></td>\n" \
-          "<td class='mchoice_value'>$value(text)</td></tr>\n"
+          "<tr><td class='selection'><input type='checkbox' name='$alt' /></td>\n" \
+          "<td class='value'>$value(text)</td></tr>\n"
       set alt_fc [list]
       if {$value(correct)} {lappend alt_fc "answer=on"} else {lappend alt_fc "answer="}
       if {$value(feedback_correct) ne ""} {
@@ -266,15 +273,34 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class mc_alternative -superclass -superclass CompoundField -parameter {}
+  Class mc_alternative -superclass -superclass CompoundField -parameter {{feedback full}}
 
   mc_alternative instproc initialize {} {
     if {[my set __state] ne "after_specs"} return
+
+    if {0} {
+      set javascript [::xowiki::formfield::FormField fc_encode { 
+	xinha_config.toolbar = [ 
+				['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
+				['killword','removeformat'] 
+			       ]; 
+      }]
+      set text_config [subst {editor=xinha,height=100px,label=Text,plugins=OacsFs,javascript=$javascript}]
+    } else {
+      set text_config [subst {editor=wym,height=100px,label=Text}]
+    }
+    if {[my feedback] eq "full"} {
+      set feedback_fields {
+	{feedback_correct {textarea,label=Feedback korrekt}}
+	{feedback_incorrect {textarea,label=Feedback inkorrekt}}
+      }
+    } else {
+      set feedback_fields ""
+    }
     my create_components [subst {
-      {text  {textarea,label=Text}}
+      {text  {richtext,$text_config}}
       {correct {boolean,horizontal=true,label=Korrekt}}
-      {feedback_correct {textarea,label=Feedback korrekt}}
-      {feedback_incorrect {textarea,label=Feedback inkorrekt}}
+      $feedback_fields
     }]
     my set __initialized 1
   }

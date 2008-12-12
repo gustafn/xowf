@@ -117,6 +117,7 @@ namespace eval ::xowf {
 
   Context instproc resolve_form_name {name parent_id} {
     set form_id [::xo::db::CrClass lookup -name $name -parent_id $parent_id]
+    #my msg "name=$name => formid=$form_id"
     if {!$form_id} {
       set lang ""; set stripped_name $name
       regexp {^(..):(.*)$} $name _ lang stripped_name
@@ -160,8 +161,12 @@ namespace eval ::xowf {
     # fails, it is supposed to return 0.
     #
     set loader [my form_loader]
+
+    # TODO why no procsearch instead of "info methods"?
     if {$loader eq "" || [my info methods $loader] eq ""} {
-      array set "" [my resolve_form_name [my form] $parent_id]
+      #my msg "resolving [my form] in state [my current_state], init form [[my current_state] form],  [my procsearch form]"
+      set form [[my current_state] form]
+      array set "" [my resolve_form_name $form $parent_id]
       set form_id $(form_id)
     } else {
       #my msg "using loader for [my form]"
@@ -757,7 +762,7 @@ namespace eval ::xowf {
       if {$feedback ne ""} {
         $dom_root appendFromScript {
           html::div -class feedback {
-            html::t $feedback
+            html::t -disableOutputEscaping $feedback
           }
         }
       }
@@ -1042,15 +1047,60 @@ namespace eval ::xowf {
     }
   }
 
+  WorkflowPage instproc create-or-use args {
+    #my msg "instance = [my is_wf_instance], wf=[my is_wf]"
+    if {[my is_wf]} {
+      my instvar package_id
+      #
+      # In a first step, we call "allocate". Allocate is Action
+      # defined in a workflow, which is called *before* the workflow
+      # instance is created. Via allocate, it is e.g. possible to
+      # provide a computed name for the workflow instance from within
+      # the workflow definition.
+      #
+      set ctx [::xowf::Context require [self]]
+      my activate $ctx allocate
+      
+      # Check, if allocate has provided a name:
+      set name [my property name ""]
+      if {$name ne ""} {
+	# Ok, a name was provided. Check if an instance with this name
+	# exists in the current folder.
+	
+	# TODO why can it be, that string-range below differs from [my lang]?
+	set default_lang [string range [my nls_language] 0 1]
+	$package_id get_lang_and_name -default_lang $default_lang -name $name lang stripped_name
+	set id [::xo::db::CrClass lookup -name $lang:$stripped_name -parent_id [$package_id folder_id]]
+	#my msg "lookup of $lang:$stripped_name returned $id, default-lang([my name])=$default_lang [my nls_language]"
+	if {$id != 0} {
+	  # The instance exists already
+	  return [$package_id returnredirect \
+		      [export_vars -base [$package_id pretty_link $lang:$stripped_name] \
+			   [list return_url template_file]]]
+	} else {
+	  #my msg "We want to create $lang:$stripped_name"
+	  return [next -name $lang:$stripped_name]
+	}
+      }
+    }
+    next
+  }
+
   WorkflowPage instproc initialize {} {
+    #
+    # A fresh workflow page was created (called only once per
+    # workflow page at initial creation)
+    #
     if {[my is_wf_instance]} {
-      # a new workflow instance was created.
+      #
+      # Get context and call user defined "constructor"
+      #
       set ctx [::xowf::Context require [self]]
       my activate $ctx initialize
+
       # Ignore the returned next_state, since the initial state is
       # always set to the same value from the ctx (initial)
-
-      #my msg "is=[my set instance_attributes]"
+      #my msg "[self] is=[my set instance_attributes]"
     }
     next
   }
@@ -1078,6 +1128,7 @@ namespace eval ::xowf {
       }
       # save instance attributes
       set instance_attributes [array get __ia]
+      #my msg "[self] [my name] setting default parameter"
       #my msg ia=$instance_attributes,props=[$ctx defined Property]
 
       my state [$ctx get_current_state]
