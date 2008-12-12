@@ -1079,7 +1079,7 @@ namespace eval ::xowf {
 			   [list return_url template_file]]]
 	} else {
 	  #my msg "We want to create $lang:$stripped_name"
-	  return [next -name $lang:$stripped_name]
+	  return [next -name $lang:$stripped_name -nls_language [my nls_language]]
 	}
       }
     }
