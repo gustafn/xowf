@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <message_catalog package_key="xowf" locale="en_US" charset="ISO-8859-1">
 
+  <msg key="alternative">Alternative</msg>
   <msg key="answer_correct">That is correct!</msg>
   <msg key="answer_incorrect">Sorry, incorrect!</msg>
+  <msg key="Exercise">Exercise</msg>
+  <msg key="exercise-text">Exercise Text</msg>
+  <msg key="Grading-Schema">Grading Schema</msg>
+  <msg key="Minutes">Minutes</msg>
 </message_catalog>
