@@ -202,24 +202,27 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class mc_exercise -superclass -superclass CompoundField -parameter {{feedback full}}
+  Class mc_exercise -superclass -superclass CompoundField -parameter {
+    {feedback full}
+    {inplace true}
+  }
 
   mc_exercise instproc initialize {} {
     if {[my set __state] ne "after_specs"} return
     set javascript [::xowiki::formfield::FormField fc_encode { 
       xinha_config.toolbar = [ 
 			      ['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
-			      ['killword','removeformat'] 
+			      ['killword','removeformat','htmlmode'] 
 			     ]; 
     }]
-    my instvar feedback
+    my instvar feedback inplace
     my create_components  [subst {
-      {text  {richtext,required,editor=xinha,height=150px,label=Angabe,plugins=OacsFs,javascript=$javascript}}
-      {alt-1 {mc_alternative,feedback=$feedback}}
-      {alt-2 {mc_alternative,feedback=$feedback}}
-      {alt-3 {mc_alternative,feedback=$feedback}}
-      {alt-4 {mc_alternative,feedback=$feedback}}
-      {alt-5 {mc_alternative,feedback=$feedback}}
+      {text  {richtext,required,editor=xinha,height=150px,label=#xowf.exercise-text#,plugins=OacsFs,javascript=$javascript,inplace=$inplace}}
+      {alt-1 {mc_alternative,feedback=$feedback,label=#xowf.alternative#,inplace=$inplace}}
+      {alt-2 {mc_alternative,feedback=$feedback,label=#xowf.alternative#,inplace=$inplace}}
+      {alt-3 {mc_alternative,feedback=$feedback,label=#xowf.alternative#,inplace=$inplace}}
+      {alt-4 {mc_alternative,feedback=$feedback,label=#xowf.alternative#,inplace=$inplace}}
+      {alt-5 {mc_alternative,feedback=$feedback,label=#xowf.alternative#,inplace=$inplace}}
     }]
     my set __initialized 1
   }
@@ -277,19 +280,22 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class mc_alternative -superclass -superclass CompoundField -parameter {{feedback full}}
+  Class mc_alternative -superclass -superclass CompoundField -parameter {
+    {feedback full}
+    {inplace true}
+  }
 
   mc_alternative instproc initialize {} {
     if {[my set __state] ne "after_specs"} return
 
-    if {0} {
+    if {1} {
       set javascript [::xowiki::formfield::FormField fc_encode { 
 	xinha_config.toolbar = [ 
 				['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
-				['killword','removeformat'] 
+				['killword','removeformat','htmlmode'] 
 			       ]; 
       }]
-      set text_config [subst {editor=xinha,height=100px,label=Text,plugins=OacsFs,javascript=$javascript}]
+      set text_config [subst {editor=xinha,height=100px,label=Text,plugins=OacsFs,inplace=[my inplace],javascript=$javascript}]
     } else {
       set text_config [subst {editor=wym,height=100px,label=Text}]
     }
