@@ -316,3 +316,70 @@ namespace eval ::xowiki::formfield {
   }
 
 }
+
+namespace eval ::xowiki::formfield {
+
+  ###########################################################
+  #
+  # ::xowiki::formfield::questionaire
+  #
+  ###########################################################
+
+  Class questionaire -superclass -superclass {form_page} -parameter {
+    {multiple true}
+  }
+
+  questionaire instproc convert_to_internal {} {
+    #
+    # Build a complex form composed of the specified form pages names
+    # contained in the value of this field.  The form-fields have to
+    # be renamed. This affects the input field names in the form and
+    # the form constaints. We use the item-id contained pages as a the
+    # prefix for the form-fields. This method must be most likely
+    # extended for other question types.
+    # 
+    set form "<FORM>\n"
+    set fc "@categories:off @cr_fields:hidden\n"
+    set intro_text [[my object] property _text]
+    append form "$intro_text\n<ol>\n"
+    foreach v [my value] {
+      # TODO: the next two commands should not be necessary to lookup
+      # again, since the right values are already loaded into the
+      # options
+      set item_id [::xo::db::CrClass lookup -name $v -parent_id [[my object] parent_id]]
+      set page [::xo::db::CrClass get_instance_from_db -item_id $item_id]
+      append form "<li><h2>[$item_id title]</h2>\n"
+      set prefix c$item_id-
+      array set __ia [$page set instance_attributes]
+      #
+      # Replace the form-field names in the form
+      #
+      dom parse -simple -html $__ia(form) doc
+      $doc documentElement root
+      set alt_inputs [list]
+      foreach n [$root selectNodes "//input\[@name != ''\]"] {
+        set alt_input [$n getAttribute name]
+        $n setAttribute name $prefix-$alt_input
+        lappend alt_inputs $alt_input
+      }
+      # We have to drop the toplevel <FORM> of the included form
+      foreach n [$root childNodes] {append form [$n asHTML]}
+      append form "</li>\n"
+      #
+      # Replace the formfield names in the form constraints
+      #
+      foreach f $__ia(form_constraints) {
+        if {[regexp {^([^:])+:(.*)$} $f _ field_name definition]} {
+          # keep all form-constraints for which we have altered the name
+          if {[lsearch $alt_inputs $field_name] > -1} {lappend fc $prefix$f}
+        }
+      }
+    }
+    append form "</ol></FORM>\n"
+    set anon_instances true ;# TODO make me configurable
+    [my object] set_property -new 1 form $form
+    [my object] set_property -new 1 form_constraints $fc
+    [my object] set_property -new 1 anon_instances $anon_instances
+    my set __refresh_instance_attributes [list form $form form_constraints $fc anon_instances $anon_instances]
+  }
+}
