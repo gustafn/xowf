@@ -202,7 +202,7 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class mc_exercise -superclass -superclass CompoundField -parameter {
+  Class mc_exercise -superclass CompoundField -parameter {
     {feedback full}
     {inplace true}
   }
@@ -280,7 +280,7 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class mc_alternative -superclass -superclass CompoundField -parameter {
+  Class mc_alternative -superclass CompoundField -parameter {
     {feedback full}
     {inplace true}
   }
@@ -325,7 +325,7 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class questionaire -superclass -superclass {form_page} -parameter {
+  Class questionaire -superclass {form_page} -parameter {
     {multiple true}
   }
 
@@ -346,11 +346,20 @@ namespace eval ::xowiki::formfield {
       # TODO: the next two commands should not be necessary to lookup
       # again, since the right values are already loaded into the
       # options
-      set item_id [::xo::db::CrClass lookup -name $v -parent_id [[my object] parent_id]]
+      set item_id [[[my object] package_id] lookup -name $v]
       set page [::xo::db::CrClass get_instance_from_db -item_id $item_id]
       append form "<li><h2>[$item_id title]</h2>\n"
       set prefix c$item_id-
       array set __ia [$page set instance_attributes]
+      #
+      # If for some reason, we have not form entry, we ignore it.
+      # TODO: We should deal here with computed forms and with true
+      # ::xowiki::forms as well...
+      #
+      if {![info exists __ia(form)]} {
+        my msg "$v has no form included"
+        continue
+      }
       #
       # Replace the form-field names in the form
       #
