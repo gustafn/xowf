@@ -366,10 +366,12 @@ namespace eval ::xowiki::formfield {
       dom parse -simple -html $__ia(form) doc
       $doc documentElement root
       set alt_inputs [list]
-      foreach n [$root selectNodes "//input\[@name != ''\]"] {
-        set alt_input [$n getAttribute name]
-        $n setAttribute name $prefix-$alt_input
-        lappend alt_inputs $alt_input
+      foreach html_type {input textarea} {
+	foreach n [$root selectNodes "//$html_type\[@name != ''\]"] {
+	  set alt_input [$n getAttribute name]
+	  $n setAttribute name $prefix-$alt_input
+	  lappend alt_inputs $alt_input
+	}
       }
       # We have to drop the toplevel <FORM> of the included form
       foreach n [$root childNodes] {append form [$n asHTML]}
