@@ -265,7 +265,7 @@ namespace eval ::xowiki::formfield {
       if {$value(feedback_incorrect) ne ""} {
         lappend alt_fc "feedback_answer_incorrect=[::xowiki::formfield:::FormField fc_encode $value(feedback_incorrect)]"
       }
-      if {[llength $alt_fc] > 0} {append fc [list $alt:[join $alt_fc ,]]\n}
+      if {[llength $alt_fc] > 0} {append fc [list $alt:checkbox,[join $alt_fc ,]]\n}
       #my msg "$alt .correct = $value(correct)"
     }
     append form "</tbody></table></FORM>\n"
