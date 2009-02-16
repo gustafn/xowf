@@ -195,6 +195,57 @@ namespace eval ::xowiki::formfield {
 }
 
 namespace eval ::xowiki::formfield {
+  ###########################################################
+  #
+  # ::xowiki::formfield::test_item
+  #
+  ###########################################################
+  Class test_item -superclass CompoundField -parameter {
+    {question_type mc}
+  }
+  test_item instproc initialize {} {
+    if {[my set __state] ne "after_specs"} return
+    set javascript [::xowiki::formfield::FormField fc_encode { 
+      xinha_config.toolbar = [ 
+			      ['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
+			      ['killword','removeformat','htmlmode'] 
+			     ]; 
+    }]
+    
+    if {[my question_type] eq "mc"} {
+      set interaction choice
+      set interaction mc_exercise ;# for the time being
+      # not used yet.
+      set choices 5
+      set minChoices 1
+      set maxChoices 5
+      set shuffle false
+    } else {
+      error "unknown question type: [my question_type]"
+    }
+    set inplace false
+    my create_components  [subst {
+      {minutes numeric,size=2,label=#xowf.Minutes#}
+      {grading {select,options={exact exact} {partial partial},default=exact,label=#xowf.Grading-Schema#}}
+      {question {$interaction,inplace=$inplace,form_item_wrapper_CSSclass=hidden-field-set}}
+      {feedback_correct {richtext,editor=xinha,slim=true,inplace=$inplace,plugins=OacsFs,height=200px}}
+      {feedback_incorrect {richtext,editor=xinha,slim=true,inplace=$inplace,plugins=OacsFs,height=200px}}
+    }]
+    my set __initialized 1
+  }
+
+  test_item instproc render_input {} {
+    ::xo::Page requireCSS /resources/xowf/myform.css
+    next
+  }
+
+  test_item instproc pretty_value {v} {
+    return [[my object] property form ""]
+  }
+
+}
+
+namespace eval ::xowiki::formfield {
 
   ###########################################################
   #
