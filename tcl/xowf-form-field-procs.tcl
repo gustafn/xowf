@@ -195,57 +195,6 @@ namespace eval ::xowiki::formfield {
 }
 
 namespace eval ::xowiki::formfield {
-  ###########################################################
-  #
-  # ::xowiki::formfield::test_item
-  #
-  ###########################################################
-  Class test_item -superclass CompoundField -parameter {
-    {question_type mc}
-  }
-  test_item instproc initialize {} {
-    if {[my set __state] ne "after_specs"} return
-    set javascript [::xowiki::formfield::FormField fc_encode { 
-      xinha_config.toolbar = [ 
-			      ['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
-			      ['killword','removeformat','htmlmode'] 
-			     ]; 
-    }]
-    
-    if {[my question_type] eq "mc"} {
-      set interaction choice
-      set interaction mc_exercise ;# for the time being
-      # not used yet.
-      set choices 5
-      set minChoices 1
-      set maxChoices 5
-      set shuffle false
-    } else {
-      error "unknown question type: [my question_type]"
-    }
-    set inplace false
-    my create_components  [subst {
-      {minutes numeric,size=2,label=#xowf.Minutes#}
-      {grading {select,options={exact exact} {partial partial},default=exact,label=#xowf.Grading-Schema#}}
-      {question {$interaction,inplace=$inplace,form_item_wrapper_CSSclass=hidden-field-set}}
-      {feedback_correct {richtext,editor=xinha,slim=true,inplace=$inplace,plugins=OacsFs,height=200px}}
-      {feedback_incorrect {richtext,editor=xinha,slim=true,inplace=$inplace,plugins=OacsFs,height=200px}}
-    }]
-    my set __initialized 1
-  }
-
-  test_item instproc render_input {} {
-    ::xo::Page requireCSS /resources/xowf/myform.css
-    next
-  }
-
-  test_item instproc pretty_value {v} {
-    return [[my object] property form ""]
-  }
-
-}
-
-namespace eval ::xowiki::formfield {
 
   ###########################################################
   #
@@ -295,15 +244,11 @@ namespace eval ::xowiki::formfield {
     # 
     set form "<FORM>\n<table class='mchoice'>\n<tbody>"
     set fc "@categories:off @cr_fields:hidden\n"
-    set intro_text [[my get_named_sub_component text] value]
+    set intro_text [my get_named_sub_component_value text]
     append form "<tr><td class='text' colspan='2'>$intro_text</td></tr>\n"
     foreach alt {alt-1 alt-2 alt-3 alt-4 alt-5} {
       foreach f {text correct feedback_correct feedback_incorrect} {
-	if {[my exists_named_sub_component $alt $f]} {
-	  set value($f) [[my get_named_sub_component $alt $f] value]
-	} else {
-	  set value($f) ""
-	}
+        set value($f) [my get_named_sub_component_value $input_field_name $f]
       }
       append form \
           "<tr><td class='selection'><input type='checkbox' name='$alt' /></td>\n" \
@@ -322,8 +267,7 @@ namespace eval ::xowiki::formfield {
     append form "</tbody></table></FORM>\n"
     [my object] set_property -new 1 form $form
     [my object] set_property -new 1 form_constraints $fc
-    my set __refresh_instance_attributes [list form $form form_constraints $fc]
-  }
+ }
 
   ###########################################################
   #
@@ -442,6 +386,5 @@ namespace eval ::xowiki::formfield {
     [my object] set_property -new 1 form $form
     [my object] set_property -new 1 form_constraints $fc
     [my object] set_property -new 1 anon_instances $anon_instances
-    my set __refresh_instance_attributes [list form $form form_constraints $fc anon_instances $anon_instances]
-  }
+ }
 }

@@ -4,8 +4,14 @@
   <msg key="alternative">Alternative</msg>
   <msg key="answer_correct">That is correct!</msg>
   <msg key="answer_incorrect">Sorry, incorrect!</msg>
+  <msg key="columns">Columns</msg>
+  <msg key="correct">Correct?</msg>
   <msg key="Exercise">Exercise</msg>
   <msg key="exercise-text">Exercise Text</msg>
+  <msg key="feedback">Feedback</msg>
+  <msg key="feedback_correct">Feedback Correct</msg>
+  <msg key="feedback_incorrect">Feedback Incorrect</msg>
   <msg key="Grading-Schema">Grading Schema</msg>
+  <msg key="lines">Lines</msg>
   <msg key="Minutes">Minutes</msg>
 </message_catalog>
