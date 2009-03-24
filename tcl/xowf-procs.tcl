@@ -271,14 +271,15 @@ namespace eval ::xowf {
   }
 
   Context instproc show_debug_info {obj} {
-    set form        [my form]
+    set stateObj    [my current_state]
+    set form        [$stateObj form]
     set view_method [my get_view_method]
     set form_loader [my form_loader]
     if {$form eq ""} {set form NONE}
     if {$view_method eq ""} {set view_method NONE}
     if {$form_loader eq ""} {set form_loader NONE}
 
-    $obj debug_msg "State: [my get_current_state], Form: $form,\
+    $obj debug_msg "State: [$stateObj name], Form: $form,\
 		View method: $view_method, Form loader: $form_loader"
 
     set conds [list]
@@ -443,10 +444,11 @@ namespace eval ::xowf {
           set link_text [$l render]
         }
       }
-      #my msg "-- link_text=$link_text"
+      #my msg "-- link_text=$link_text// refs?[$page exists references]"
       if {[$page exists references]} {
         #my msg "updating references refs=[$page set references]"
         $page update_references [$page item_id] [lsort -unique [$page set references]]
+        $page set __extra_references [$page set references]
 	$page unset references
       }
       if {[llength [$page set __unresolved_references]] > 0} {
@@ -701,7 +703,7 @@ namespace eval ::xowf {
           -1 { set result "incorrect"}
            1 { set result "correct"  }
         }
-        $f form-widget-CSSclass $result
+        $f form_widget_CSSclass $result
         $f set evaluated_answer_result $result
 
         set feedback ""
@@ -737,13 +739,13 @@ namespace eval ::xowf {
           set result [$f set evaluated_answer_result]
           foreach n [$dom_root selectNodes "//form//*\[@name='[$f name]'\]"] {
             set oldCSSClass [expr {[$n hasAttribute class] ? [$n getAttribute class] : ""}]
-            $n setAttribute class [string trim "$oldCSSClass [$f form-widget-CSSclass]"]
-            $f form-widget-CSSclass $result
+            $n setAttribute class [string trim "$oldCSSClass [$f form_widget_CSSclass]"]
+            $f form_widget_CSSclass $result
 
             set helpText [$f help_text]
             if {$helpText ne ""} {
               set divNode [$dom_doc createElement div]
-              $divNode setAttribute class [$f form-widget-CSSclass]
+              $divNode setAttribute class [$f form_widget_CSSclass]
               $divNode appendChild [$dom_doc createTextNode $helpText]
               [$n parentNode] insertBefore $divNode [$n nextSibling]
               util_user_message -message "field [$f name], value [$f value]: $helpText"
@@ -1249,10 +1251,11 @@ namespace eval ::xowf {
         # work flow instance
         #
 	set entry_form_item_id [my wf_property wf_form_id]
-	#my msg entry_form_item_id=$entry_form_item_id
         set work_flow_form [::xo::db::CrClass get_instance_from_db -item_id $form_item_id]
         set work_flow_base [$package_id pretty_link [$work_flow_form name]]
         set button_objs [list]
+
+	#my msg entry_form_item_id=$entry_form_item_id-exists?=[my isobject $entry_form_item_id]
 
         # form definition button
         if {![my isobject $entry_form_item_id]} {
@@ -1269,7 +1272,17 @@ namespace eval ::xowf {
           if {[info exists return_url]} {$obj return_url $return_url}
           lappend button_objs $obj
         }
-        
+
+#         if {[my exists_property form]} {
+#           lappend button_objs \
+#               [::xowiki::includelet::form-menu-button-new new -volatile \
+#                    -package_id $package_id \
+#                    -base [$package_id pretty_link [my name]] -form [self]]
+#           lappend button_objs \
+#               [::xowiki::includelet::form-menu-button-answers new -volatile \
+#                    -package_id $package_id \
+#                    -base [$package_id pretty_link [my name]] -form [self]]
+#         }
         # work flow definition button 
         set obj [::xowiki::includelet::form-menu-button-wf new -volatile \
                      -package_id $package_id \

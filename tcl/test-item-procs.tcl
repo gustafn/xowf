@@ -27,6 +27,7 @@ namespace eval ::xowiki::formfield {
   Class test_item -superclass FormGeneratorField -parameter {
     {question_type mc}
     {nr_choices 5}
+    {feedback_level full}
   }
   
   #
@@ -46,7 +47,11 @@ namespace eval ::xowiki::formfield {
     # what's wrong, we can't provide different feedback for right or
     # wrong.
     #
-    my instvar inplace
+    my instvar inplace feedback_level
+    if {$feedback_level eq "none"} {
+      return ""
+    }
+
     set widget "richtext,editor=xinha,slim=true,inplace=$inplace,plugins=OacsFs,height=150px"
     if {$auto_correct} {
       return [subst {
@@ -66,7 +71,7 @@ namespace eval ::xowiki::formfield {
   #
   test_item instproc initialize {} {
     if {[my set __state] ne "after_specs"} return
-    my instvar inplace
+    my instvar inplace feedback_level
     set options ""
     #
     # Provide some settings for name short-cuts
@@ -75,6 +80,10 @@ namespace eval ::xowiki::formfield {
       mc { # we should support as well: minChoices, maxChoices, shuffle
            set interaction_class mc_interaction
            set options nr_choices=[my nr_choices]
+         }
+      sc { # we should support as well: minChoices, maxChoices, shuffle
+           set interaction_class mc_interaction
+           set options nr_choices=[my nr_choices],multiple=false
          }
       ot { set interaction_class text_interaction }
       default {error "unknown question type: [my question_type]"}
@@ -85,12 +94,25 @@ namespace eval ::xowiki::formfield {
     
     # For the time being, we set inplace to false, otherwise we can't
     # currently edit empty fields
-    set inplace false
-    
+    set inplace true
+
+    #
+    # handle feedback_level
+    #
+    # The object might be a form, just use the property, if we are on
+    # a FormPage.
+    if {[[my object] istype ::xowiki::FormPage]} {
+      set feedback_level_property [[my object] property feedback_level]
+      if {$feedback_level_property ne ""} {
+        set feedback_level $feedback_level_property
+      }
+    }
+
+    #
     my create_components  [subst {
       {minutes numeric,size=2,label=#xowf.Minutes#}
       {grading {select,options={exact exact} {partial partial},default=exact,label=#xowf.Grading-Schema#}}
-      {interaction {$interaction_class,$options,inplace=$inplace,form_item_wrapper_CSSclass=hidden-field-set}}
+      {interaction {$interaction_class,$options,feedback_level=$feedback_level,inplace=$inplace,form_item_wrapper_CSSclass=hidden-field-set}}
       [my feed_back_definition $auto_correct]
     }]
     my set __initialized 1
@@ -107,20 +129,21 @@ namespace eval ::xowiki::formfield {
   ###########################################################
 
   Class mc_interaction -superclass FormGeneratorField -parameter {
-    {feedback full}
-    {inplace true}
+    {feedback_level full}
+    {inplace false}
     {shuffle false}
     {nr_choices 5}
+    {multiple true}
   }
 
   mc_interaction instproc initialize {} {
     if {[my set __state] ne "after_specs"} return
     test_item instvar {xinha(javascript) javascript}
-    my instvar feedback inplace input_field_names
+    my instvar feedback_level inplace input_field_names
     #
     # build choices
     #
-    set choice_definition "{mc_choice,feedback=$feedback,label=#xowf.alternative#,inplace=$inplace}"
+    set choice_definition "{mc_choice,feedback_level=$feedback_level,label=#xowf.alternative#,inplace=$inplace}"
     set input_field_names [my generate_fieldnames [my nr_choices]]
     set choices ""
     foreach n $input_field_names {append choices "{$n $choice_definition}\n"}
@@ -154,9 +177,15 @@ namespace eval ::xowiki::formfield {
       #
       # fill values into form
       #
-      append form \
-          "<tr><td class='selection'><input type='checkbox' name='$input_field_name' /></td>\n" \
-          "<td class='value'>$value(text)</td></tr>\n"
+      if {[my multiple]} {
+        append form \
+            "<tr><td class='selection'><input type='checkbox' name='$input_field_name' value='$input_field_name'/></td>\n" \
+            "<td class='value'>$value(text)</td></tr>\n"
+      } else {
+        append form \
+            "<tr><td class='selection'><input type='radio' name='radio' value='$input_field_name' /></td>\n" \
+            "<td class='value'>$value(text)</td></tr>\n"
+      }
       #
       # build form constraints
       #
@@ -183,7 +212,7 @@ namespace eval ::xowiki::formfield {
   ###########################################################
 
   Class mc_choice -superclass FormGeneratorField -parameter {
-    {feedback full}
+    {feedback_level full}
     {inplace true}
   }
 
@@ -196,10 +225,10 @@ namespace eval ::xowiki::formfield {
     } else {
       set text_config [subst {editor=wym,height=100px,label=Text}]
     }
-    if {[my feedback] eq "full"} {
+    if {[my feedback_level] eq "full"} {
       set feedback_fields {
-	{feedback_correct {textarea,label=#xowf.feedback_correct#}}
-	{feedback_incorrect {textarea,label=#xowf.feedback_incorrect#}}
+	{feedback_correct {textarea,cols=60,label=#xowf.feedback_correct#}}
+	{feedback_incorrect {textarea,cols=60,label=#xowf.feedback_incorrect#}}
       }
     } else {
       set feedback_fields ""
@@ -221,7 +250,7 @@ namespace eval ::xowiki::formfield {
   ###########################################################
 
   Class text_interaction -superclass FormGeneratorField -parameter {
-    {feedback full}
+    {feedback_level full}
     {inplace true}
   }
   text_interaction set auto_correct false
@@ -229,14 +258,14 @@ namespace eval ::xowiki::formfield {
   text_interaction instproc initialize {} {
     if {[my set __state] ne "after_specs"} return
     test_item instvar {xinha(javascript) javascript}
-    my instvar feedback inplace input_field_names
+    my instvar feedback_level inplace input_field_names
     #
     # create component structure
     #
     my create_components  [subst {
       {text  {richtext,required,editor=xinha,height=150px,label=#xowf.exercise-text#,plugins=OacsFs,javascript=$javascript,inplace=$inplace}}
       {lines {numeric,default=10,size=3,label=#xowf.lines#}}
-      {columns {numeric,default=80,size=3,label=#xowf.columns#}}
+      {columns {numeric,default=60,size=3,label=#xowf.columns#}}
     }]
     my set __initialized 1
   }
