@@ -136,6 +136,24 @@ namespace eval ::xowiki::formfield {
     {multiple true}
   }
 
+  mc_interaction instproc set_compound_value {value} {
+    set r [next]
+    if {![my multiple]} {
+      # For single choice questions, we have a fake-field for denoting
+      # the correct entry. We have to distribute this to the radio
+      # element, which is rendered.
+      set correct_field_name [my get_named_sub_component_value correct]
+      if {$correct_field_name ne ""} {
+        foreach c [my components] {
+          if {[$c name] eq $correct_field_name} {
+            ${c}::correct value $correct_field_name
+          }
+        }
+      }
+    }
+    return $r
+  }
+
   mc_interaction instproc initialize {} {
     if {[my set __state] ne "after_specs"} return
     test_item instvar {xinha(javascript) javascript}
@@ -143,9 +161,12 @@ namespace eval ::xowiki::formfield {
     #
     # build choices
     #
-    set choice_definition "{mc_choice,feedback_level=$feedback_level,label=#xowf.alternative#,inplace=$inplace}"
+    set choice_definition "{mc_choice,feedback_level=$feedback_level,label=#xowf.alternative#,inplace=$inplace,multiple=[my multiple]}"
     set input_field_names [my generate_fieldnames [my nr_choices]]
     set choices ""
+    if {![my multiple]} {
+      append choices "{correct radio,omit}\n"
+    }
     foreach n $input_field_names {append choices "{$n $choice_definition}\n"}
     #
     # create component structure
@@ -167,6 +188,12 @@ namespace eval ::xowiki::formfield {
     set fc "@categories:off @cr_fields:hidden\n"
     set intro_text [my get_named_sub_component_value text]
     append form "<tr><td class='text' colspan='2'><div class='question_text'>$intro_text</div></td></tr>\n"
+
+    #my msg " input_field_names=[my set input_field_names]"
+   
+    if {![my multiple]} {
+      set correct_field_name [my get_named_sub_component_value correct]
+    }
     
     foreach input_field_name [my set input_field_names] {
       foreach f {text correct feedback_correct feedback_incorrect} {
@@ -174,23 +201,29 @@ namespace eval ::xowiki::formfield {
       }
       # skip empty entries
       if {$value(text) eq ""} continue
+
       #
       # fill values into form
       #
       if {[my multiple]} {
+        set correct $value(correct)
         append form \
             "<tr><td class='selection'><input type='checkbox' name='$input_field_name' value='$input_field_name'/></td>\n" \
             "<td class='value'>$value(text)</td></tr>\n"
       } else {
+        #my msg $correct_field_name,[my name],$input_field_name
+        set correct [expr {"[my name].$input_field_name" eq $correct_field_name}]
         append form \
             "<tr><td class='selection'><input type='radio' name='radio' value='$input_field_name' /></td>\n" \
             "<td class='value'>$value(text)</td></tr>\n"
       }
+      #my msg "[array get value] corr=$correct"
+
       #
       # build form constraints
       #
       set if_fc [list]
-      if {$value(correct)} {lappend if_fc "answer=on"} else {lappend if_fc "answer="}
+      if {$correct} {lappend if_fc "answer=on"} else {lappend if_fc "answer="}
       if {$value(feedback_correct) ne ""} {
         lappend if_fc "feedback_answer_correct=[::xowiki::formfield::FormField fc_encode $value(feedback_correct)]"
       }
@@ -214,6 +247,7 @@ namespace eval ::xowiki::formfield {
   Class mc_choice -superclass FormGeneratorField -parameter {
     {feedback_level full}
     {inplace true}
+    {multiple true}
   }
 
   mc_choice instproc initialize {} {
@@ -233,11 +267,25 @@ namespace eval ::xowiki::formfield {
     } else {
       set feedback_fields ""
     }
-    my create_components [subst {
-      {text  {richtext,$text_config}}
-      {correct {boolean,horizontal=true,label=#xowf.correct#}}
-      $feedback_fields
-    }]
+    if {[my multiple]} {
+      # We are in a multiple choice item; provide for editing a radio
+      # group per alternative.
+      my create_components [subst {
+        {text  {richtext,$text_config}}
+        {correct {boolean,horizontal=true,label=#xowf.correct#}}
+        $feedback_fields
+      }]
+    } else {
+      # We are in a single choice item; provide for editing a single
+      # radio group spanning all entries.  Use as name for grouping
+      # the form-field name minus the last segment.
+      regsub -all {[.][^.]+$} [my name] "" groupname
+      my create_components [subst {
+        {text  {richtext,$text_config}}
+        {correct {radio,label=#xowf.correct#,forced_name=$groupname.correct,options={"" [my name]}}}
+        $feedback_fields
+      }]
+    }
     my set __initialized 1
   }
 }
