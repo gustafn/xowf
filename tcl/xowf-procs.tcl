@@ -173,15 +173,23 @@ namespace eval ::xowf {
       set form_id [my $loader [my form]]
       #my msg form_id=$form_id
     }
+
     if {$form_id == 0} {
-      set vars [$object array names instance_attributes]
+      set vars [$object array names __ia]
       if {[llength $vars] == 0} {
         #set template "AUTO form, no instance variables defined,<br>@_text@"
         set template "@_text@"
       } else {
         set template "@[join $vars @,@]@<br>@_text@"
       }
+      #my log "USE auto-form template=$template, vars=$vars IA=[$object set instance_attributes], V=[$object info vars]"
+
       set package_id [$object package_id]
+      if {[my exists auto_form_constraints]} {
+        set fc [my set auto_form_constraints]
+      } else {
+        set fc ""
+      }
       set form_id [::xowiki::Form new -destroy_on_cleanup \
                     -package_id $package_id \
                     -parent_id [$package_id folder_id] \
@@ -189,7 +197,7 @@ namespace eval ::xowf {
                     -anon_instances [expr {[my exists autoname] ? [my set autoname] : "f"}] \
                     -form {} \
                     -text [list $template text/html] \
-                    -form_constraints {}]
+                    -form_constraints $fc]
     } else {
       # be sure, to instantiate the form object
       if {![my isobject ::$form_id]} {
@@ -246,6 +254,7 @@ namespace eval ::xowf {
         #   - "debug" 
         #   - "policy"
         #   - "autoname"
+        #   - "auto_form_constraints"
         #
         if {[$ctx exists debug] && [$ctx set debug]>0} {
           $ctx show_debug_info $obj
@@ -923,7 +932,7 @@ namespace eval ::xowf {
           if {[regexp {^__action_(.+)$} $name _ action]} {
             set ctx [::xowf::Context require [self]]
             set next_state [my activate $ctx $action]
-            #my msg "next_state=$next_state, current_state=[$ctx get_current_state]"
+            my msg "after activate next_state=$next_state, current_state=[$ctx get_current_state], [my set instance_attributes]"
             if {$next_state ne ""} {
               if {[${ctx}::$next_state exists assigned_to]} {
                 my assignee [my get_assignee [${ctx}::$next_state assigned_to]]
@@ -1308,6 +1317,7 @@ namespace eval ::xowf {
       error "Page [self] is not a Workflow Instance"
     }
     set ctx [::xowf::Context require [self]]
+    my log "CTX of [self] ([my name])= $ctx"
     foreach a [$ctx get_actions] {
       if {[namespace tail $a] eq "$action"} {
         #my log "--xowf action $action allowed -- name='[my name]'"
@@ -1315,16 +1325,20 @@ namespace eval ::xowf {
 	# fake a work request with the given instance attributes 
 	::xo::cc array set form_parameter \
 	    [list __object_name [my name] \
+                 _name [my name] \
 		 __form_action save-form-data \
 		 __form_redirect_method __none \
 		 __action_$action $action]
 	::xo::cc array set form_parameter $attributes
-
+        set old_object [$package_id set object]
+        $package_id set object [my name]
 	if {[catch {::$package_id invoke -method edit -batch_mode 1} errorMsg]} {
           #my log "---call-action returns error $errorMsg"
           ns_log error "$errorMsg\n$::errorInfo"
           error $errorMsg
         }
+        #my log "RESETTING package_id object"
+        $package_id set object $old_object
 	return "OK"
       }
     }
