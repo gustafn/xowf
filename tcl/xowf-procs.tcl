@@ -176,7 +176,10 @@ namespace eval ::xowf {
 
     if {$form_id == 0} {
       set vars [$object array names __ia]
-      if {[llength $vars] == 0} {
+      if {[my exists auto_form_template]} {
+        set template [my set auto_form_template]
+        #my log "USE autoform template"
+      } elseif {[llength $vars] == 0} {
         #set template "AUTO form, no instance variables defined,<br>@_text@"
         set template "@_text@"
       } else {
@@ -255,6 +258,7 @@ namespace eval ::xowf {
         #   - "policy"
         #   - "autoname"
         #   - "auto_form_constraints"
+        #   - "auto_form_template"
         #
         if {[$ctx exists debug] && [$ctx set debug]>0} {
           $ctx show_debug_info $obj
@@ -627,7 +631,6 @@ namespace eval ::xowf {
   #namespace export State Action Property
 
 
-
   #
   # MixinClass for implementing the workflow definition and workflow instance
   #
@@ -905,9 +908,10 @@ namespace eval ::xowf {
       ns_log notice "No action $action in workflow context"
       return ""
     }
-    set next_state [$action_command get_next_state]
+    #set next_state [$action_command get_next_state]
     # Activate action
     if {[catch {$action_command activate [self]} errorMsg]} {
+ns_log notice "ACTIVATE error =>$errorMsg"
       set error "error in action '$action' of workflow instance [my name]\
 		of workflow [[my page_template] name]:"
       if {[[my package_id] exists __batch_mode]} {
@@ -919,6 +923,10 @@ namespace eval ::xowf {
       ns_log error "--WF: evaluation $error\n$::errorInfo"
       return ""
     } else {
+      # We moved get_next_state here to allow an action to infuence the
+      # conditions in the activation method.
+      set next_state [$action_command get_next_state]
+      ns_log notice "ACTIVATE no error next-state=$next_state"
       return $next_state
     }
   }
@@ -932,7 +940,7 @@ namespace eval ::xowf {
           if {[regexp {^__action_(.+)$} $name _ action]} {
             set ctx [::xowf::Context require [self]]
             set next_state [my activate $ctx $action]
-            my msg "after activate next_state=$next_state, current_state=[$ctx get_current_state], [my set instance_attributes]"
+            #my msg "after activate next_state=$next_state, current_state=[$ctx get_current_state], [my set instance_attributes]"
             if {$next_state ne ""} {
               if {[${ctx}::$next_state exists assigned_to]} {
                 my assignee [my get_assignee [${ctx}::$next_state assigned_to]]
@@ -1323,22 +1331,36 @@ namespace eval ::xowf {
         #my log "--xowf action $action allowed -- name='[my name]'"
 	# In the current state, the specified action is allowed, so
 	# fake a work request with the given instance attributes 
-	::xo::cc array set form_parameter \
+
+        set last_context [expr {[$package_id exists context] ? [$package_id context] : "::xo::cc"}]
+        set last_object [$package_id set object]
+        set cc [::xo::ConnectionContext new -user_id [$last_context user_id]]
+        $package_id context $cc
+	$cc array set form_parameter \
 	    [list __object_name [my name] \
                  _name [my name] \
 		 __form_action save-form-data \
 		 __form_redirect_method __none \
 		 __action_$action $action]
-	::xo::cc array set form_parameter $attributes
-        set old_object [$package_id set object]
+	$cc array set form_parameter $attributes
         $package_id set object [my name]
+
 	if {[catch {::$package_id invoke -method edit -batch_mode 1} errorMsg]} {
           #my log "---call-action returns error $errorMsg"
           ns_log error "$errorMsg\n$::errorInfo"
           error $errorMsg
         }
         #my log "RESETTING package_id object"
-        $package_id set object $old_object
+        $package_id set object $last_object
+        $package_id context $last_context
+        $cc destroy
+
+        my log "CHECK batch mode: [$package_id  exists __batch_mode]"
+        if {[$package_id  exists __batch_mode]} {
+          my msg "RESETTING BATCH MODE"
+          my log "RESETTING BATCH MODE"
+          $package_id unset __batch_mode
+        }
 	return "OK"
       }
     }

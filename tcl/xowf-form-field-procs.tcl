@@ -98,6 +98,9 @@ namespace eval ::xo::role {
   Role instproc get_members args {
     error "get_members are not implemented for [self]"
   }
+  Role instproc get_object_id {object} {
+    return [$object package_id]
+  }
 
   Role create all
   all proc is_member {-user_id:required -package_id} {
@@ -135,6 +138,13 @@ namespace eval ::xo::role {
   creator proc is_member {-user_id:required -package_id -object:required} {
     $object instvar creation_user
     return [expr {$creation_user == $user_id}]
+  }
+  creator proc get_object_id {object} {return [$object item_id]}
+  creator proc get_members {-object_id:required} {
+    set creator_id [db_string [my qn get_owner] "select o.creation_user
+      from acs_objects o
+      where object_id = :object_id"]
+    return [list [list [::xo::get_user_name $creator_id] $creator_id]]
   }
 
   Role create app_group_member 
@@ -179,7 +189,8 @@ namespace eval ::xowiki::formfield {
     my instvar role
     #my msg role=$role,obj=[my object]
     if {[info command ::xo::role::$role] ne ""} {
-      my set options [::xo::role::$role get_members -object_id [[my object] package_id]]
+      set object_id [::xo::role::$role get_object_id [my object]]
+      my set options [::xo::role::$role get_members -object_id $object_id]
     } elseif {[set gid [group::get_id -group_name $role]] ne ""} {
       my set options [list]
       foreach m [group::get_members -group_id $gid] {
