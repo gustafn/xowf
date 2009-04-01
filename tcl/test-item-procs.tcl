@@ -220,10 +220,10 @@ namespace eval ::xowiki::formfield {
       #my msg "[array get value] corr=$correct"
 
       #
-      # build form constraints
+      # build form constraints per input field
       #
       set if_fc [list]
-      if {$correct} {lappend if_fc "answer=on"} else {lappend if_fc "answer="}
+      if {$correct} {lappend if_fc "answer=$input_field_name"} else {lappend if_fc "answer="}
       if {$value(feedback_correct) ne ""} {
         lappend if_fc "feedback_answer_correct=[::xowiki::formfield::FormField fc_encode $value(feedback_correct)]"
       }
@@ -232,6 +232,11 @@ namespace eval ::xowiki::formfield {
       }
       if {[llength $if_fc] > 0} {append fc [list $input_field_name:checkbox,[join $if_fc ,]]\n}
       #my msg "$input_field_name .correct = $value(correct)"
+    }
+
+    if {![my multiple]} {
+      regexp {[.]([^.]+)$} $correct_field_name _ correct_field_value
+      lappend fc "radio:text,answer=$correct_field_value"
     }
     append form "</tbody></table></FORM>\n"
     [my object] set_property -new 1 form $form

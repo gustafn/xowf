@@ -984,7 +984,9 @@ ns_log notice "ACTIVATE error =>$errorMsg"
   } {
     set correct 1
     foreach f [my instantiated_form_fields] {
+      #my msg "checking correctness [$f name]"
       if {[$f answer_is_correct] != 1} {
+        #my msg "checking correctness [$f name] failed ([$f answer_is_correct])"
         set correct 0
         break
       }
