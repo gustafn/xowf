@@ -805,6 +805,9 @@ namespace eval ::xowf {
     # To avoid a loop, when "view" is redirected to "edit",
     # we make sure that we only check the redirect on views
     # without content.
+
+    #my msg "view [self args]"
+
     if {[my is_wf_instance] && $content eq ""} {
       set ctx [::xowf::Context require [self]]
       set method [$ctx get_view_method]
@@ -814,15 +817,20 @@ namespace eval ::xowf {
         #my msg "view redirects to $method in state [$ctx get_current_state]"
         switch -- $method {
           view_user_input {
+            #my msg "calling edit with disable_input_fields=1"
             return [my edit -disable_input_fields 1]
             #return [$package_id call [self] edit [list -disable_input_fields 1]]
           }
           view_user_input_with_feedback {
             my set __feedback_mode 1
+            #my msg "calling edit with disable_input_fields=1"
             return [my edit -disable_input_fields 1]
             #return [$package_id call [self] edit [list -disable_input_fields 1]]
           }
-          default {return [$package_id invoke -method $method]}
+          default {
+            #my msg "calling $method"
+            return [$package_id invoke -method $method]
+          }
         }
       } 
     }
