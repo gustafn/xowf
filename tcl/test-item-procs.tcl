@@ -351,6 +351,10 @@ namespace eval ::xowiki::formfield {
     {multiple true}
   }
 
+  test_section instproc pretty_value {v} {
+    return [[my object] property form ""]
+  }
+
   test_section instproc convert_to_internal {} {
     #
     # Build a complex form composed of the specified form pages names
