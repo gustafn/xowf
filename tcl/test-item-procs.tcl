@@ -1,3 +1,4 @@
+:::xo::db::require package xowiki
 namespace eval ::xowiki::formfield {
   ###########################################################
   #
