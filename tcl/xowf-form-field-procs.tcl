@@ -219,6 +219,7 @@ namespace eval ::xowiki::formfield {
   }
 
   mc_exercise instproc initialize {} {
+    my log "[self class] deprecated, you should switch to test-item procs"
     if {[my set __state] ne "after_specs"} return
     set javascript [::xowiki::formfield::FormField fc_encode { 
       xinha_config.toolbar = [ 
@@ -257,12 +258,12 @@ namespace eval ::xowiki::formfield {
     set fc "@categories:off @cr_fields:hidden\n"
     set intro_text [my get_named_sub_component_value text]
     append form "<tr><td class='text' colspan='2'>$intro_text</td></tr>\n"
-    foreach alt {alt-1 alt-2 alt-3 alt-4 alt-5} {
+    foreach input_field_name {alt-1 alt-2 alt-3 alt-4 alt-5} {
       foreach f {text correct feedback_correct feedback_incorrect} {
         set value($f) [my get_named_sub_component_value $input_field_name $f]
       }
       append form \
-          "<tr><td class='selection'><input type='checkbox' name='$alt' /></td>\n" \
+          "<tr><td class='selection'><input type='checkbox' name='$input_field_name' /></td>\n" \
           "<td class='value'>$value(text)</td></tr>\n"
       set alt_fc [list]
       if {$value(correct)} {lappend alt_fc "answer=on"} else {lappend alt_fc "answer="}
@@ -272,8 +273,8 @@ namespace eval ::xowiki::formfield {
       if {$value(feedback_incorrect) ne ""} {
         lappend alt_fc "feedback_answer_incorrect=[::xowiki::formfield:::FormField fc_encode $value(feedback_incorrect)]"
       }
-      if {[llength $alt_fc] > 0} {append fc [list $alt:checkbox,[join $alt_fc ,]]\n}
-      #my msg "$alt .correct = $value(correct)"
+      if {[llength $alt_fc] > 0} {append fc [list $input_field_name:checkbox,[join $alt_fc ,]]\n}
+      #my msg "$input_field_name .correct = $value(correct)"
     }
     append form "</tbody></table></FORM>\n"
     [my object] set_property -new 1 form $form
@@ -292,6 +293,7 @@ namespace eval ::xowiki::formfield {
   }
 
   mc_alternative instproc initialize {} {
+    my log "[self class] deprecated, you should switch to test-item procs"
     if {[my set __state] ne "after_specs"} return
 
     if {1} {

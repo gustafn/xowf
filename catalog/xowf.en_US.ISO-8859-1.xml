@@ -8,6 +8,9 @@
   <msg key="correct">Correct?</msg>
   <msg key="Exercise">Exercise</msg>
   <msg key="exercise-text">Exercise Text</msg>
+  <msg key="exercise_mc">Multiple Choice Exercise</msg>
+  <msg key="exercise_ot">Open Text Exercise</msg>
+  <msg key="exercise_sc">Single Choice Exercise</msg>
   <msg key="feedback">Feedback</msg>
   <msg key="feedback_correct">Feedback Correct</msg>
   <msg key="feedback_incorrect">Feedback Incorrect</msg>
