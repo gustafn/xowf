@@ -178,7 +178,7 @@ namespace eval ::xowiki::formfield {
     }]
     my set __initialized 1
   }
-
+  mc_interaction set auto_correct true
   mc_interaction instproc convert_to_internal {} {
     #
     # Build a from from the componets of the exercise on the fly.
@@ -242,6 +242,10 @@ namespace eval ::xowiki::formfield {
     append form "</tbody></table></FORM>\n"
     [my object] set_property -new 1 form $form
     [my object] set_property -new 1 form_constraints $fc
+    set anon_instances true ;# TODO make me configurable
+    [my object] set_property -new 1 anon_instances $anon_instances
+    [my object] set_property -new 1 auto_correct [[self class] set auto_correct]
+    [my object] set_property -new 1 has_solution true
   }
 
   ###########################################################
@@ -336,6 +340,10 @@ namespace eval ::xowiki::formfield {
     append form "</FORM>\n"
     [my object] set_property -new 1 form $form
     [my object] set_property -new 1 form_constraints $fc
+    set anon_instances true ;# TODO make me configurable
+    [my object] set_property -new 1 anon_instances $anon_instances
+    [my object] set_property -new 1 auto_correct [[self class] set auto_correct]
+    [my object] set_property -new 1 has_solution false
   }
 }
 
@@ -430,10 +438,14 @@ namespace eval ::xowiki::formfield {
       }
     }
     append form "</ol></form>\n"
-    set anon_instances true ;# TODO make me configurable
     [my object] set_property -new 1 form $form
     [my object] set_property -new 1 form_constraints $fc
+    set anon_instances true ;# TODO make me configurable
     [my object] set_property -new 1 anon_instances $anon_instances
+    # for mixed test sections (e.g. text interaction and mc), we have
+    # to combine the values of the items
+    [my object] set_property -new 1 auto_correct true ;# should be computed
+    [my object] set_property -new 1 has_solution true ;# should be computed
     #my msg "fc=$fc"
   }
 }

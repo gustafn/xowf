@@ -990,13 +990,17 @@ ns_log notice "ACTIVATE error =>$errorMsg"
     Check, if answer is correct based on "answer" attribute of form fields
     and provided user input.
   } {
-    set correct 1
-    foreach f [my instantiated_form_fields] {
-      #my msg "checking correctness [$f name] [$f info class] answer?[$f exists answer]"
-      if {[$f exists answer] && [$f answer_is_correct] != 1} {
-        #my msg "checking correctness [$f name] failed ([$f answer_is_correct])"
-        set correct 0
-        break
+    set correct 0
+    if {[my get_from_template auto_correct] == true} {
+      foreach f [my instantiated_form_fields] {
+        #my msg "checking correctness [$f name] [$f info class] answer?[$f exists answer] -- [my get_from_template auto_correct]"
+        if {[$f exists answer]} {
+          if {[$f answer_is_correct] != 1} {
+            #my msg "checking correctness [$f name] failed ([$f answer_is_correct])"
+            set correct -1
+            break
+          }
+        }
       }
     }
     return $correct
