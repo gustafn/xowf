@@ -1122,7 +1122,17 @@ ns_log notice "ACTIVATE error =>$errorMsg"
     next
   }
 
+  WorkflowPage instproc initialize_loaded_object {} {
+    next
+    if {[my is_wf_instance]} {
+      my msg "msg "
+      my initialize 
+    }
+
+  }
+
   WorkflowPage instproc initialize {} {
+    #my log "is_wf_instance [my is_wf_instance]"
     #
     # A fresh workflow page was created (called only once per
     # workflow page at initial creation)
@@ -1139,6 +1149,7 @@ ns_log notice "ACTIVATE error =>$errorMsg"
       #my msg "[self] is=[my set instance_attributes]"
     }
     next
+
   }
 
   WorkflowPage instproc default_instance_attributes {} {
