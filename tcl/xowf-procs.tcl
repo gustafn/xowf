@@ -1125,10 +1125,8 @@ ns_log notice "ACTIVATE error =>$errorMsg"
   WorkflowPage instproc initialize_loaded_object {} {
     next
     if {[my is_wf_instance]} {
-      my msg "msg "
       my initialize 
     }
-
   }
 
   WorkflowPage instproc initialize {} {
