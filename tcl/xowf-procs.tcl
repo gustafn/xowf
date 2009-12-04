@@ -378,7 +378,8 @@ namespace eval ::xowf {
     }
 
     append result "\}\n"
-    set path [acs_package_root_dir xowf]/www/
+    set package_id [[my object] package_id]
+    set path [acs_package_root_dir [$package_id package_key]]/www/
     set fn $path/g.dot
     set ofn dot-$obj_id.png
     set f [open $fn w]; fconfigure $f -encoding utf-8; puts $f $result; close $f
@@ -386,7 +387,7 @@ namespace eval ::xowf {
       my msg "Error during execution of $dot: $errorMsg"
     }
     file delete $fn
-    return "<img style='$style' src='[[[my object] package_id] package_url]/$ofn'>\n"
+    return "<img style='$style' src='[$package_id package_url]/$ofn'>\n"
   }
 
   Context instproc check {} {
@@ -451,7 +452,7 @@ namespace eval ::xowf {
       foreach {type pages} [list wf_form [my array names forms] wf_parampage [my array names parampages]] {
         foreach p $pages {
           array set "" [my resolve_form_name $p [$page parent_id]]
-          set l [::xowiki::Link new -volatile -page $page -type $type -name $(name)]
+          set l [::xowiki::Link new -volatile -page $page -type $type -name $(name) -item_id $(form_id)]
           # render does the optional fetch of the names, and maintains the
           # variable references of the page object (similar to render).
           set link_text [$l render]
