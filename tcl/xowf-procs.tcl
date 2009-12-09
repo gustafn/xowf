@@ -651,7 +651,12 @@ namespace eval ::xowf {
   WorkflowPage ad_instproc is_wf_instance {} {
     Check, if the current page is a workflow instance (page, refering to a workflow)
   } {
+    # we cannot call get_template_object here, because this will lead
+    # to a recursive loop.
     set pt [my page_template]
+    if {![my isobject ::$pt]} {
+      ::xo::db::CrClass get_instance_from_db -item_id $pt
+    }
     if {[my state] ne "" && [$pt istype ::xowiki::FormPage]} {
       my array set __wfi [$pt instance_attributes]
       return 1
@@ -1075,7 +1080,12 @@ ns_log notice "ACTIVATE error =>$errorMsg"
 	set ctx [::xowf::Context require [self]]
 	my set $key [$ctx form_object [self]]
       }
-      return [my set $key]
+      set form_obj [my set $key]
+      if {![my isobject $form_obj]} {
+	set form_id [string trimleft $form_obj :]
+	::xo::db::CrClass get_instance_from_db -item_id $form_id
+      }
+      return $form_obj
     } else {
       return [next]
     }
