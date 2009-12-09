@@ -1006,6 +1006,7 @@ ns_log notice "ACTIVATE error =>$errorMsg"
             set correct -1
             break
           }
+	  set correct 1
         }
       }
     }
