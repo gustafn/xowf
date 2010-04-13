@@ -19,9 +19,8 @@ namespace eval ::xowiki::includelet {
   }
 
   #
-  # Create an includelet called s5, which behaves similar 
-  # to the book includelet (default), or produces an S5 slide-show,
-  # when slideshow flag is true.
+  # Create an includelet called wf-todo, which lists the todo items 
+  # for a user_id from a single or multiple worflows)
   #
   ::xowiki::IncludeletClass create wf-todo \
       -superclass ::xowiki::Includelet \
