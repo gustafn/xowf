@@ -115,33 +115,15 @@ namespace eval ::xowf {
     return $result
   }
 
-  Context instproc resolve_form_name {name parent_id} {
-    set form_id [::xo::db::CrClass lookup -name $name -parent_id $parent_id]
-    #my msg "name=$name => formid=$form_id"
-    if {!$form_id} {
-      set lang ""; set stripped_name $name
-      regexp {^(..):(.*)$} $name _ lang stripped_name
-      set package_id [[my object] package_id]
-      if {$lang eq ""} {
-        # if no lang is given, use default_locale.
-        # This allows for multi-language workflow instances.
-        set lang [$package_id default_language]
-        set form_id [::xo::db::CrClass lookup -name ${lang}:${stripped_name} -parent_id $parent_id]
-        if {!$form_id} {
-          # Maybe we are configured to use the connection locale. 
-          # In this case, use the system locale as last ressort
-          set system_locale [lang::system::locale -package_id $package_id]
-          set system_lang [string range $system_locale 0 1]
-          if {$system_lang ne $lang} {
-            set lang $system_lang
-            set form_id [::xo::db::CrClass lookup -name ${lang}:${stripped_name} -parent_id $parent_id]
-          }
-        }
-      }
-      set name ${lang}:${stripped_name} 
-    }
-    #my msg result=[list form_id $form_id name $name]
-    return [list form_id $form_id name $name]
+  Context instproc resolve_form_name {-object:required name} {
+    set package_id [$object logical_package_id]
+    set parent_id  [$object logical_parent_id]
+    array set "" [$package_id item_ref -normalize_name false \
+		      -use_package_path 1 \
+		      -default_lang "" \
+		      -parent_id $parent_id \
+		      $name]
+    return [list form_id $(item_id) name $(prefix):$(stripped_name)]
   }
 
   Context instproc form_object {object} {
@@ -166,13 +148,14 @@ namespace eval ::xowf {
     if {$loader eq "" || [my info methods $loader] eq ""} {
       #my msg "resolving [my form] in state [my current_state], init form [[my current_state] form],  [my procsearch form]"
       set form [[my current_state] form]
-      array set "" [my resolve_form_name $form $parent_id]
+      array set "" [my resolve_form_name -object $object $form]
       set form_id $(form_id)
+      
     } else {
       #my msg "using loader for [my form]"
       set form_id [my $loader [my form]]
-      #my msg form_id=$form_id
     }
+    #my msg form_id=$form_id
 
     if {$form_id == 0} {
       set vars [$object array names __ia]
@@ -451,7 +434,7 @@ namespace eval ::xowf {
       $page set __unresolved_object_type ::xowiki::Form
       foreach {type pages} [list wf_form [my array names forms] wf_parampage [my array names parampages]] {
         foreach p $pages {
-          array set "" [my resolve_form_name $p [$page parent_id]]
+          array set "" [my resolve_form_name -object $page $p]
           set l [::xowiki::Link new -volatile -page $page -type $type -name $(name) -item_id $(form_id)]
           # render does the optional fetch of the names, and maintains the
           # variable references of the page object (similar to render).
@@ -1075,6 +1058,7 @@ ns_log notice "ACTIVATE error =>$errorMsg"
   }
   WorkflowPage instproc get_template_object {} {
     my instvar page_template
+    #my msg is_wf_instance=[my is_wf_instance]
     if {[my is_wf_instance]} {
       set key __wfi(wf_form_id)
       if {![my exists $key]} {
@@ -1261,9 +1245,10 @@ ns_log notice "ACTIVATE error =>$errorMsg"
     if {[my exists __no_form_page_footer]} {
       next
     } else {
-      my instvar package_id
+      set package_id [my logical_package_id]
       set form_item_id [my page_template]
-      #my msg "is wf page [my is_wf], is wf instance page [my is_wf_instance]"
+      #my msg "is wf page [my is_wf], is wf instance page [my is_wf_instance], package_id=$package_id"
+
       if {[my is_wf]} {
         #
         # page containing a work flow definition
