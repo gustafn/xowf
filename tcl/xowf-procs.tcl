@@ -27,6 +27,7 @@ namespace eval ::xowf {
   } {
     # This method is called, whenever an xowf package is initialized.
     next
+    #my msg "::xowiki::FormPage instmixin add ::xowf::WorkflowPage"
     ::xowiki::FormPage instmixin add ::xowf::WorkflowPage
   }
 
@@ -116,13 +117,13 @@ namespace eval ::xowf {
   }
 
   Context instproc resolve_form_name {-object:required name} {
-    set package_id [$object logical_package_id]
-    set parent_id  [$object logical_parent_id]
+    set package_id [$object package_id]
+    set parent_id [$object parent_id]
     array set "" [$package_id item_ref -normalize_name false \
-		      -use_package_path 1 \
-		      -default_lang "" \
-		      -parent_id $parent_id \
-		      $name]
+                     -use_package_path 1 \
+                     -default_lang "" \
+                     -parent_id $parent_id \
+                     $name]
     return [list form_id $(item_id) name $(prefix):$(stripped_name)]
   }
 
@@ -150,12 +151,11 @@ namespace eval ::xowf {
       set form [[my current_state] form]
       array set "" [my resolve_form_name -object $object $form]
       set form_id $(form_id)
-      
     } else {
       #my msg "using loader for [my form]"
       set form_id [my $loader [my form]]
+      #my msg form_id=$form_id
     }
-    #my msg form_id=$form_id
 
     if {$form_id == 0} {
       set vars [$object array names __ia]
@@ -1058,7 +1058,6 @@ ns_log notice "ACTIVATE error =>$errorMsg"
   }
   WorkflowPage instproc get_template_object {} {
     my instvar page_template
-    #my msg is_wf_instance=[my is_wf_instance]
     if {[my is_wf_instance]} {
       set key __wfi(wf_form_id)
       if {![my exists $key]} {
@@ -1245,10 +1244,9 @@ ns_log notice "ACTIVATE error =>$errorMsg"
     if {[my exists __no_form_page_footer]} {
       next
     } else {
-      set package_id [my logical_package_id]
+      my instvar package_id
       set form_item_id [my page_template]
-      #my msg "is wf page [my is_wf], is wf instance page [my is_wf_instance], package_id=$package_id"
-
+      #my msg "is wf page [my is_wf], is wf instance page [my is_wf_instance]"
       if {[my is_wf]} {
         #
         # page containing a work flow definition
