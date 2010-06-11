@@ -180,7 +180,7 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class role_member -superclass select -parameter {role}
+  Class role_member -superclass candidate_box_select -parameter {role}
   role_member instproc initialize {} {
     next
     my set is_party_id 1

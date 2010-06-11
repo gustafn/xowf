@@ -1256,30 +1256,34 @@ ns_log notice "ACTIVATE error =>$errorMsg"
         set work_flow_base [$package_id pretty_link [$work_flow_form name]]
 
         set wf [self]
-        set wf_base [$package_id pretty_link [$wf name]]
+        set wf_base [$package_id pretty_link -parent_id [my parent_id] [$wf name]]
         set button_objs [list]
 
         # create new workflow instance button with start form
-        set link [$package_id make_link -link $wf_base $wf create-new return_url]
+        if {[my parent_id] != [$package_id folder_id]} {
+          set parent_id [my parent_id]
+        }
+        set link [$package_id make_link -link $wf_base $wf create-new parent_id return_url]
         lappend button_objs [::xowiki::includelet::form-menu-button-new new -volatile \
+                                 -parent_id [my parent_id] \
                                  -form $wf -link $link]
 
         # list workflow instances button
         set obj [::xowiki::includelet::form-menu-button-wf-instances new -volatile \
-                     -package_id $package_id \
+                     -package_id $package_id -parent_id [my parent_id] \
                      -base $wf_base -form $wf]
         if {[info exists return_url]} {$obj return_url $return_url}
         lappend button_objs $obj
 
         # work flow definition button 
         set obj [::xowiki::includelet::form-menu-button-form new -volatile \
-                     -package_id $package_id \
+                     -package_id $package_id -parent_id [my parent_id] \
                      -base $work_flow_base -form $work_flow_form]
         if {[info exists return_url]} {$obj return_url $return_url}
         lappend button_objs $obj
 
         # make menu
-        return [my include [list form-menu -button_objs $button_objs]]
+        return [my include [list form-menu -form_item_id [my item_id] -button_objs $button_objs]]
 
       } elseif {[my is_wf_instance]} {
         #
@@ -1287,7 +1291,7 @@ ns_log notice "ACTIVATE error =>$errorMsg"
         #
 	set entry_form_item_id [my wf_property wf_form_id]
         set work_flow_form [::xo::db::CrClass get_instance_from_db -item_id $form_item_id]
-        set work_flow_base [$package_id pretty_link [$work_flow_form name]]
+        set work_flow_base [$package_id pretty_link -parent_id [$work_flow_form parent_id] [$work_flow_form name]]
         set button_objs [list]
 
 	#my msg entry_form_item_id=$entry_form_item_id-exists?=[my isobject $entry_form_item_id]
@@ -1302,7 +1306,7 @@ ns_log notice "ACTIVATE error =>$errorMsg"
           set form [::xo::db::CrClass get_instance_from_db -item_id $entry_form_item_id]
           set base [$package_id pretty_link [$form name]]
           set obj [::xowiki::includelet::form-menu-button-form new -volatile \
-                       -package_id $package_id \
+                       -package_id $package_id -parent_id [my parent_id] \
                        -base $base -form $form]
           if {[info exists return_url]} {$obj return_url $return_url}
           lappend button_objs $obj
@@ -1311,21 +1315,21 @@ ns_log notice "ACTIVATE error =>$errorMsg"
 #         if {[my exists_property form]} {
 #           lappend button_objs \
 #               [::xowiki::includelet::form-menu-button-new new -volatile \
-#                    -package_id $package_id \
+#                    -package_id $package_id -parent_id [my parent_id] \
 #                    -base [$package_id pretty_link [my name]] -form [self]]
 #           lappend button_objs \
 #               [::xowiki::includelet::form-menu-button-answers new -volatile \
-#                    -package_id $package_id \
+#                    -package_id $package_id -parent_id [my parent_id] \
 #                    -base [$package_id pretty_link [my name]] -form [self]]
 #         }
         # work flow definition button 
         set obj [::xowiki::includelet::form-menu-button-wf new -volatile \
-                     -package_id $package_id \
+                     -package_id $package_id -parent_id [my parent_id] \
                      -base $work_flow_base -form $work_flow_form]
         if {[info exists return_url]} {$obj return_url $return_url}
         lappend button_objs $obj
         # make menu
-        return [my include [list form-menu -button_objs $button_objs]]
+        return [my include [list form-menu -form_item_id [my page_template] -button_objs $button_objs]]
       } else {
         #return [my include [list form-menu -form_item_id $form_item_id -buttons form]]
         next
