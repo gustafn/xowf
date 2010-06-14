@@ -50,7 +50,7 @@ namespace eval ::xowiki::formfield {
     return "<div style='width: 65%; overflow:auto;float: left;'>
 	<pre class='code'>$text</pre></div>
 	<div float: right;'>[my as_graph]</div><div class='visual-clear'></div>
-        [[my object] include my-refers] 
+        [[my object] include my-refers]
    "
   }
 
@@ -200,8 +200,16 @@ namespace eval ::xowiki::formfield {
     }
     next
   }
-  role_member instproc pretty_value {v} {
+  role_member instproc get_entry_label {v} {
     return [::xo::get_user_name $v]
+  }
+  role_member instproc pretty_value {v} {
+    my set options [my get_labels $v]
+    #foreach uid $v {
+    #  my lappend options [list $uid [::xo::get_user_name $uid]]
+    #}
+    next
+    #return [::xo::get_user_name $v]
   }
 }
 

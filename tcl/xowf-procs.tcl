@@ -204,12 +204,22 @@ namespace eval ::xowf {
     # interfere with other Workflows
     #
     regsub -all \r\n [my workflow_definition] \n workflow_definition
-    my contains "
+    if {[catch {my contains "
        Class create Action   -superclass  ::xowf::Action
        Class create State    -superclass  ::xowf::State
        Class create Condition -superclass ::xowf::Condition
        Class create Property -superclass  ::xowf::Property -set abstract 1
-       $workflow_definition"
+       $workflow_definition"} errorMsg]} {
+      my msg "Error in workflow definition: $errorMsg"
+      #my msg [[my object] instance_attributes]
+      #array set __ia [[my object] instance_attributes]
+      #catch {unset __ia(workflow_definition)}
+      #catch {[my object] unset __ia(workflow_definition)}
+      #catch {[my object] unset __wf(workflow_definition)}
+      #[my object] instance_attributes [array get __ia]
+      #[my object] save
+      #my msg [[my object] serialize]
+    }
     if {[my all_roles]} {
       #my msg want.to.create=[my array names handled_roles]
       foreach role [my array names handled_roles] {
@@ -597,10 +607,52 @@ namespace eval ::xowf {
   Class Action -superclass WorkflowConstruct -parameter {
     {next_state ""}
     {roles all}
+    {state_safe false}
   }
   Action instproc activate {obj} {;}
   Action instproc get_next_state {} {
     return [my get_value [my next_state]]
+  }
+  Action instproc invoke {{-attributes ""}} {
+    set action_name [namespace tail [self]]
+    set ctx [my info parent]
+    set object [$ctx object]
+    set package_id [$object package_id]
+    my log  "--xowf invoke action [self]"
+    # We fake a work request with the given instance attributes 
+    set last_context [expr {[$package_id exists context] ? [$package_id context] : "::xo::cc"}]
+    set last_object [$package_id set object]
+    set cc [::xo::ConnectionContext new -user_id [$last_context user_id]]
+    $package_id context $cc
+    $cc array set form_parameter \
+        [list __object_name [$object name] \
+                 _name [$object name] \
+		 __form_action save-form-data \
+		 __form_redirect_method __none \
+             __action_$action_name $action_name]
+    #ns_log notice "call_action pushed form_param to $cc: [$cc array get form_parameter]"
+    $cc array set form_parameter $attributes
+
+    $package_id set object "[$package_id folder_path -parent_id [$object parent_id]][$object name]"
+        
+    #my log "call_action calls:   ::$package_id invoke -method edit -batch_mode 1 // obj=[$package_id set object]"
+    if {[catch {::$package_id invoke -method edit -batch_mode 1} errorMsg]} {
+      my msg "---call_action returns error $errorMsg"
+      ns_log error "$errorMsg\n$::errorInfo"
+      error $errorMsg
+    }
+    #my log  "RESETTING package_id object"
+    $package_id set object $last_object
+    $package_id context $last_context
+    $cc destroy
+
+    #my log "CHECK batch mode: [$package_id  exists __batch_mode]"
+    if {[$package_id  exists __batch_mode]} {
+      my msg "RESETTING BATCH MODE"
+      my log "RESETTING BATCH MODE"
+      $package_id unset __batch_mode
+    }
+    return "OK"
   }
 
   Class Property \
@@ -902,13 +954,13 @@ namespace eval ::xowf {
     # Check, if action is defined
     if {[info command $action_command] eq ""} {
       # no such action the current context
-      ns_log notice "No action $action in workflow context"
+      ns_log notice "ERROR [my name] No action $action in workflow context"
       return ""
     }
     #set next_state [$action_command get_next_state]
     # Activate action
     if {[catch {$action_command activate [self]} errorMsg]} {
-ns_log notice "ACTIVATE error =>$errorMsg"
+      ns_log notice "ACTIVATE [my name] error =>$errorMsg"
       set error "error in action '$action' of workflow instance [my name]\
 		of workflow [[my page_template] name]:"
       if {[[my package_id] exists __batch_mode]} {
@@ -923,7 +975,7 @@ ns_log notice "ACTIVATE error =>$errorMsg"
       # We moved get_next_state here to allow an action to infuence the
       # conditions in the activation method.
       set next_state [$action_command get_next_state]
-      ns_log notice "ACTIVATE no error next-state=$next_state"
+      ns_log notice "ACTIVATE [my name] no error next-state=$next_state"
       return $next_state
     }
   }
@@ -933,11 +985,12 @@ ns_log notice "ACTIVATE error =>$errorMsg"
       foreach {validation_errors category_ids} [next] break
       if {$validation_errors == 0} {
         #my msg "validation ok"
-        foreach {name value} [::xo::cc get_all_form_parameter] {
+        set cc [[my package_id] context]
+        foreach {name value} [$cc get_all_form_parameter] {
           if {[regexp {^__action_(.+)$} $name _ action]} {
             set ctx [::xowf::Context require [self]]
             set next_state [my activate $ctx $action]
-            #my msg "after activate next_state=$next_state, current_state=[$ctx get_current_state], [my set instance_attributes]"
+            my log "after activate next_state=$next_state, current_state=[$ctx get_current_state], [my set instance_attributes]"
             if {$next_state ne ""} {
               if {[${ctx}::$next_state exists assigned_to]} {
                 my assignee [my get_assignee [${ctx}::$next_state assigned_to]]
@@ -1253,7 +1306,7 @@ ns_log notice "ACTIVATE error =>$errorMsg"
         #
 	#set ctx [::xowf::Context require [self]]
         set work_flow_form [::xo::db::CrClass get_instance_from_db -item_id $form_item_id]
-        set work_flow_base [$package_id pretty_link [$work_flow_form name]]
+        set work_flow_base [$package_id pretty_link -parent_id [$work_flow_form parent_id] [$work_flow_form name]]
 
         set wf [self]
         set wf_base [$package_id pretty_link -parent_id [my parent_id] [$wf name]]
@@ -1337,6 +1390,15 @@ ns_log notice "ACTIVATE error =>$errorMsg"
     }
   }
 
+  WorkflowPage instproc call_action_foreach {-action:required {-attributes ""} page_names} {
+    foreach page_name $page_names {
+      set item_id [[my package_id] lookup -parent_id [my parent_id] -name $page_name]
+      ::xo::db::CrClass get_instance_from_db -item_id $item_id
+      $item_id call_action -action $action -attributes $attributes
+    }
+  }
+
+
   WorkflowPage ad_instproc call_action {-action {-attributes {}}} {
     Call the specified action in the current workflow instance.
     The specified attributes are provided like form_parameters to
@@ -1350,43 +1412,18 @@ ns_log notice "ACTIVATE error =>$errorMsg"
     my log "CTX of [self] ([my name])= $ctx"
     foreach a [$ctx get_actions] {
       if {[namespace tail $a] eq "$action"} {
-        #my log "--xowf action $action allowed -- name='[my name]'"
-	# In the current state, the specified action is allowed, so
-	# fake a work request with the given instance attributes 
-
-        set last_context [expr {[$package_id exists context] ? [$package_id context] : "::xo::cc"}]
-        set last_object [$package_id set object]
-        set cc [::xo::ConnectionContext new -user_id [$last_context user_id]]
-        $package_id context $cc
-	$cc array set form_parameter \
-	    [list __object_name [my name] \
-                 _name [my name] \
-		 __form_action save-form-data \
-		 __form_redirect_method __none \
-		 __action_$action $action]
-	$cc array set form_parameter $attributes
-        $package_id set object [my name]
-
-	if {[catch {::$package_id invoke -method edit -batch_mode 1} errorMsg]} {
-          #my log "---call-action returns error $errorMsg"
-          ns_log error "$errorMsg\n$::errorInfo"
-          error $errorMsg
-        }
-        #my log "RESETTING package_id object"
-        $package_id set object $last_object
-        $package_id context $last_context
-        $cc destroy
-
-        my log "CHECK batch mode: [$package_id  exists __batch_mode]"
-        if {[$package_id  exists __batch_mode]} {
-          my msg "RESETTING BATCH MODE"
-          my log "RESETTING BATCH MODE"
-          $package_id unset __batch_mode
-        }
-	return "OK"
+	# In the current state, the specified action is allowed
+        my log  "--xowf action $action allowed -- name='[my name]'"
+        return [$a invoke -attributes $attributes]
       }
     }
-    error "\tNo action '$action' available in workflow instance [self] of \
+    set a  ${ctx}::$action
+    if {[info command $a] ne "" && [$a state_safe]} {
+      # The action is defined as state-safe, so if can be called in every state
+      my log  "--xowf action $action state_safe -- name='[my name]'"
+      return [$a invoke -attributes $attributes]
+    }
+    error "\tNo state-safe action '$action' available in workflow instance [self] of \
 	[[my page_template] name] in state [$ctx get_current_state]
 	Available actions: [[$ctx current_state] get_actions]"
   }
