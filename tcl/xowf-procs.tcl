@@ -16,6 +16,7 @@
 #   package instances)
 
 ::xo::db::require package xowiki
+::xo::library require -package xowiki xowiki-procs.tcl
 
 namespace eval ::xowf {
   ::xo::PackageMgr create ::xowf::Package \
@@ -914,7 +915,7 @@ namespace eval ::xowf {
                       -creation_date [my set creation_date] \
                       -last_modified [my last_modified] \
                       -uid $package_id-[my revision_id] \
-                      -url [$package_id pretty_link -absolute true [my name]] \
+                      -url [my pretty_link -absolute true] \
                       -summary $subject \
                       -description "Workflow instance of workflow $wf_name [my description]"]
       $items configure -prodid "-//WU Wien//NONSGML XoWiki Content Flow//EN" -method request
@@ -1148,13 +1149,14 @@ namespace eval ::xowf {
 	# Ok, a name was provided. Check if an instance with this name
 	# exists in the current folder.
 	set default_lang [my lang]
+        set parent_id [my query_parameter "parent_id" [$package_id folder_id]]
 	$package_id get_lang_and_name -default_lang $default_lang -name $name lang stripped_name
-	set id [::xo::db::CrClass lookup -name $lang:$stripped_name -parent_id [$package_id folder_id]]
+	set id [::xo::db::CrClass lookup -name $lang:$stripped_name -parent_id $parent_id]
 	#my msg "lookup of $lang:$stripped_name returned $id, default-lang([my name])=$default_lang [my nls_language]"
 	if {$id != 0} {
 	  # The instance exists already
 	  return [$package_id returnredirect \
-		      [export_vars -base [$package_id pretty_link $lang:$stripped_name] \
+		      [export_vars -base [$package_id pretty_link -parent_id $parent_id $lang:$stripped_name] \
 			   [list return_url template_file]]]
 	} else {
 	  if {$lang ne $default_lang} {
@@ -1306,10 +1308,10 @@ namespace eval ::xowf {
         #
 	#set ctx [::xowf::Context require [self]]
         set work_flow_form [::xo::db::CrClass get_instance_from_db -item_id $form_item_id]
-        set work_flow_base [$package_id pretty_link -parent_id [$work_flow_form parent_id] [$work_flow_form name]]
+        set work_flow_base [$work_flow_form pretty_link]
 
         set wf [self]
-        set wf_base [$package_id pretty_link -parent_id [my parent_id] [$wf name]]
+        set wf_base [$wf pretty_link]
         set button_objs [list]
 
         # create new workflow instance button with start form
@@ -1344,7 +1346,7 @@ namespace eval ::xowf {
         #
 	set entry_form_item_id [my wf_property wf_form_id]
         set work_flow_form [::xo::db::CrClass get_instance_from_db -item_id $form_item_id]
-        set work_flow_base [$package_id pretty_link -parent_id [$work_flow_form parent_id] [$work_flow_form name]]
+        set work_flow_base [$work_flow_form pretty_link]
         set button_objs [list]
 
 	#my msg entry_form_item_id=$entry_form_item_id-exists?=[my isobject $entry_form_item_id]
@@ -1357,7 +1359,7 @@ namespace eval ::xowf {
           # Here, we have have an id that we use for fetching...
           #
           set form [::xo::db::CrClass get_instance_from_db -item_id $entry_form_item_id]
-          set base [$package_id pretty_link [$form name]]
+          set base [$form pretty_link]
           set obj [::xowiki::includelet::form-menu-button-form new -volatile \
                        -package_id $package_id -parent_id [my parent_id] \
                        -base $base -form $form]
@@ -1369,11 +1371,11 @@ namespace eval ::xowf {
 #           lappend button_objs \
 #               [::xowiki::includelet::form-menu-button-new new -volatile \
 #                    -package_id $package_id -parent_id [my parent_id] \
-#                    -base [$package_id pretty_link [my name]] -form [self]]
+#                    -base [my pretty_link] -form [self]]
 #           lappend button_objs \
 #               [::xowiki::includelet::form-menu-button-answers new -volatile \
 #                    -package_id $package_id -parent_id [my parent_id] \
-#                    -base [$package_id pretty_link [my name]] -form [self]]
+#                    -base [my pretty_link] -form [self]]
 #         }
         # work flow definition button 
         set obj [::xowiki::includelet::form-menu-button-wf new -volatile \
@@ -1392,9 +1394,12 @@ namespace eval ::xowf {
 
   WorkflowPage instproc call_action_foreach {-action:required {-attributes ""} page_names} {
     foreach page_name $page_names {
-      set item_id [[my package_id] lookup -parent_id [my parent_id] -name $page_name]
-      ::xo::db::CrClass get_instance_from_db -item_id $item_id
-      $item_id call_action -action $action -attributes $attributes
+      set page [[my package_id] get_page_from_name -parent_id [my parent_id] -name $page_name]
+      if {$page ne ""} {
+        $item_id call_action -action $action -attributes $attributes
+      } else {
+        ns_log notice "WF: could not call action $action, since $page_name in [my parent_id] failed"
+      }
     }
   }
 

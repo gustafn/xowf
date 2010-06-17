@@ -41,7 +41,7 @@ namespace eval ::xowiki::includelet {
     set sql {
       select assignee,xowiki_form_page_id,state,i.publish_status,page_template,
           p.creation_date, p.last_modified, p,description,
-          i2.name as wf_name,p.title,i.name,o.package_id as pid
+          i2.name as wf_name,p.title,i.name,i.parent_id,o.package_id as pid
       from xowiki_form_pagei p,cr_items i, cr_items i2, acs_objects o 
       where assignee = :user_id 
       and i.live_revision = xowiki_form_page_id 
@@ -83,12 +83,12 @@ namespace eval ::xowiki::includelet {
   wf-todo instproc render_ical {} {
     my instvar items
     foreach i [$items children] {
-      $i instvar wf_name name title state xowiki_form_page_id pid description
+      $i instvar wf_name name title state xowiki_form_page_id pid description parent_id
       ::xowf::Package initialize -package_id $pid
 
       $i class ::xo::ical::VTODO
       $i configure -uid $pid-$xowiki_form_page_id \
-          -url [$pid pretty_link -absolute true $name] \
+          -url [$pid pretty_link -absolute true $parent_id $name] \
           -summary "$title ($state)" \
           -description "Workflow instance of workflow $wf_name $description"
     }
@@ -114,11 +114,11 @@ namespace eval ::xowiki::includelet {
                  Field state -label [::xowiki::FormPage::slot::state set pretty_name]
                }]
     foreach i [$items children] {
-      $i instvar wf_name name title state xowiki_form_page_id pid
+      $i instvar wf_name name title state xowiki_form_page_id pid parent_id
       ::xowf::Package initialize -package_id $pid
       $t add \
           -wf $wf_name \
-          -wf.href [$pid pretty_link $wf_name] \
+          -wf.href [$pid pretty_link -parent_id $parent_id $wf_name] \
           -title $title \
           -item $xowiki_form_page_id \
           -item.href [$pid pretty_link $name] \
