@@ -1396,7 +1396,7 @@ namespace eval ::xowf {
     foreach page_name $page_names {
       set page [[my package_id] get_page_from_name -parent_id [my parent_id] -name $page_name]
       if {$page ne ""} {
-        $item_id call_action -action $action -attributes $attributes
+        $page call_action -action $action -attributes $attributes
       } else {
         ns_log notice "WF: could not call action $action, since $page_name in [my parent_id] failed"
       }
