@@ -15,6 +15,7 @@
         <maturity>0</maturity>
 
         <provides url="xowf" version="0.30d"/>
+        <requires url="xowiki" version="0.132"/>
 
         <callbacks>
         </callbacks>

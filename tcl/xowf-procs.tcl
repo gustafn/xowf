@@ -16,7 +16,7 @@
 #   package instances)
 
 ::xo::db::require package xowiki
-::xo::library require -package xowiki xowiki-procs.tcl
+::xo::library require -package xowiki xowiki-procs
 
 namespace eval ::xowf {
   ::xo::PackageMgr create ::xowf::Package \
