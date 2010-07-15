@@ -455,7 +455,7 @@ namespace eval ::xowf {
       #my msg "-- link_text=$link_text// refs?[$page exists references]"
       if {[$page exists references]} {
         #my msg "updating references refs=[$page set references]"
-        $page update_references [$page item_id] [lsort -unique [$page set references]]
+        $page references_update [lsort -unique [$page set references]]
         $page set __extra_references [$page set references]
 	$page unset references
       }
