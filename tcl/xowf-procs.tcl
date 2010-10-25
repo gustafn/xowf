@@ -150,8 +150,11 @@ namespace eval ::xowf {
     if {$loader eq "" || [my info methods $loader] eq ""} {
       #my msg "resolving [my form] in state [my current_state], init form [[my current_state] form],  [my procsearch form]"
       set form [[my current_state] form]
-      array set "" [my resolve_form_name -object $object $form]
-      set form_id $(form_id)
+      set form_id 0
+      if {$form ne ""} {
+	array set "" [my resolve_form_name -object $object $form]
+	set form_id $(form_id)
+      }
     } else {
       #my msg "using loader for [my form]"
       set form_id [my $loader [my form]]
@@ -162,14 +165,14 @@ namespace eval ::xowf {
       set vars [$object array names __ia]
       if {[my exists auto_form_template]} {
         set template [my set auto_form_template]
-        #my log "USE autoform template"
+        my log "USE autoform template"
       } elseif {[llength $vars] == 0} {
         #set template "AUTO form, no instance variables defined,<br>@_text@"
         set template "@_text@"
       } else {
         set template "@[join $vars @,@]@<br>@_text@"
       }
-      #my log "USE auto-form template=$template, vars=$vars IA=[$object set instance_attributes], V=[$object info vars]"
+      #my log "USE auto-form template=$template, vars=$vars IA=[$object set instance_attributes], V=[$object info vars] auto [expr {[my exists autoname] ? [my set autoname] : "f"}]"
 
       set package_id [$object package_id]
       if {[my exists auto_form_constraints]} {
@@ -955,7 +958,7 @@ namespace eval ::xowf {
     # Check, if action is defined
     if {[info command $action_command] eq ""} {
       # no such action the current context
-      ns_log notice "ERROR [my name] No action $action in workflow context"
+      ns_log notice "Warning: [my name] No action $action in workflow context"
       return ""
     }
     #set next_state [$action_command get_next_state]
