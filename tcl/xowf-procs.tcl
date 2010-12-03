@@ -3,7 +3,6 @@
 
   @author Gustaf Neumann
   @creation-date 2008-03-05
-  @cvs-id $Id $
 }
 
 # Todo:
@@ -663,6 +662,19 @@ namespace eval ::xowf {
       -superclass ::xowiki::formfield::FormField -parameter {{name "[namespace tail [self]]"}} \
       -parameter {{allow_query_parameter false}}
   Property set abstract 1
+
+  Property instproc init {} {
+    #
+    # Mostly compatibility fix for XOTcl 2.0. Provide a default
+    # property for $object, if the property does not exist in the
+    # instance attributes, but provided in the Property definition.
+    #
+    set object [[my info parent] object]
+    if {[my exists default] && ![$object exists __ia([my name])]} {
+      $object set __ia([my name]) [my default]
+      #my msg "[self] set default of $object to [my default]"
+    }
+  }
 
   Property instproc get_default_from {page} {
     my set parampage $page
