@@ -172,6 +172,9 @@ namespace eval ::xowf {
     # reduced the number of hits significantly and seems sufficiently
     # fast.
     #
+    # To make sure we are not fetching pages from unmounted instances
+    # we check for package_id not null.
+    #
     set items [::xowiki::FormPage instantiate_objects \
                    -object_class ::xowiki::FormPage \
                    -sql "
@@ -183,6 +186,7 @@ namespace eval ::xowf {
                       and i2.item_id = i.parent_id and i2.content_type = '::xowiki::FormPage'
                       and r.publish_date $op to_timestamp('$ansi_time','YYYY-MM-DD HH24:MI')
                       and i.publish_status = 'production'
+		      and o.package_id is not null
                     " ]
 
     my log "--at we got [llength [$items children]] scheduled items"
