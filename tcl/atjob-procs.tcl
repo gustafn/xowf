@@ -188,13 +188,14 @@ namespace eval ::xowf {
     my log "--at we got [llength [$items children]] scheduled items"
 
     foreach item [$items children] {
-      my log "--at *** job=[$item serialize] ***\n"
+      #my log "--at *** job=[$item serialize] ***\n"
       set owner_id [$item parent_id]
       set party_id [$item creation_user]
       array unset __ia
       array set __ia [$item instance_attributes]
       if {![info exists __ia(cmd)]} {
-        ns_log notice "--at ignore strange entry [$item serialize]"
+        #ns_log notice "--at ignore strange entry [$item serialize]"
+        ns_log notice "--at ignore strange entry, no cmd in [$item instance_attributes]"
         continue
       }
       set cmd $__ia(cmd)
