@@ -259,10 +259,10 @@ namespace eval ::xowf {
         if {[$ctx exists debug] && [$ctx set debug]>0} {
           $ctx show_debug_info $obj
         }
-        # anything to do?
+        # anything to do with autoname?
         #if {[$ctx exists autoname]} {
-        #  my msg obj=[$obj info class],obj=$obj
-        #  #my set_new_property anon_instances t
+        #  my log obj=[$obj info class],obj=$obj
+        #  $obj set_property -new 1 anon_instances t
         #}
 
         if {[$ctx exists policy]} {
@@ -1283,6 +1283,19 @@ namespace eval ::xowf {
     return $constraints_from_form
     #return [my merge_constraints $constraints_from_form [my property form_constraints]]
   }
+
+  WorkflowPage instproc get_anon_instances {} {
+    if {[my istype ::xowiki::FormPage] && [my is_wf_instance]} {
+      # In case, the workflow has the autoname variable set, it has
+      # the highest weight of all other sources.
+      set ctx [::xowf::Context require [self]]
+      if {[$ctx exists autoname]} {
+	return [$ctx set autoname]
+      }
+    }
+    next
+  }
+
   WorkflowPage instproc get_form_constraints {{-trylocal false}} {
     if {[my istype ::xowiki::FormPage] && [my is_wf]} {
       #my msg "is_wf"
