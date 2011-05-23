@@ -207,6 +207,7 @@ namespace eval ::xowf {
     # interfere with other Workflows
     #
     regsub -all \r\n [my workflow_definition] \n workflow_definition
+
     if {[catch {my contains "
        Class create Action   -superclass  ::xowf::Action
        Class create State    -superclass  ::xowf::State
@@ -223,6 +224,7 @@ namespace eval ::xowf {
       #[my object] save
       #my msg [[my object] serialize]
     }
+
     if {[my all_roles]} {
       #my msg want.to.create=[my array names handled_roles]
       foreach role [my array names handled_roles] {
@@ -242,6 +244,15 @@ namespace eval ::xowf {
       set state [$obj state]
       if {$state eq ""} {set state initial}
       $ctx set_current_state $state
+      
+      if {[info command [$ctx current_state]] eq ""} {
+	# The state was like deleted from the workflow definition, but
+	# the workflow instance does still need it. We complain an
+	# reset the state to initial, which should be always present.
+	$obj msg "Workflow instance [$obj name] is in an undefined state $state, reset to initial"
+	set state initial
+	$ctx set_current_state $state
+      }
 
       # set the embedded context to the workflow context, 
       # used e.g. by "behavior" of form-fields
@@ -308,12 +319,18 @@ namespace eval ::xowf {
   }
   Context instproc draw_transition {from action role} {
     #my msg "[self args]"
+
+    if {[$action state_safe]} {
+      set arc_style {,style="dashed",penwidth=1,color=gray}
+    } else {
+      set arc_style ""
+    }
     set cond_values [$action get_cond_values [$action next_state]]
     set result ""
     if {[llength $cond_values]>2} {
       # we have conditional values
       set c cond_[$from name]_[my incr condition_count]
-      set arc_style {,style="setlinewidth(1)",color=gray}
+      append arc_style {,style="setlinewidth(1)",penwidth=1,color=gray}
       append result "  state_$c \[shape=diamond, fixedsize=1, width=0.2, height=0.2, fixedsize=1,style=solid,color=gray,label=\"\"\];\n"
       append result [my draw_arc [$from name] $c [$action name]-1 $role[$action label] ""]
       foreach {cond value} $cond_values {
@@ -322,7 +339,7 @@ namespace eval ::xowf {
       }
     } else {
       set prefix ""
-      append result [my draw_arc [$from name] [lindex $cond_values 1] [$action name] $role$prefix[$action label] ""]
+      append result [my draw_arc [$from name] [lindex $cond_values 1] [$action name] $role$prefix[$action label] $arc_style]
     }
     return $result
   }
@@ -361,6 +378,7 @@ namespace eval ::xowf {
     foreach s [my defined State] {
       foreach a [$s get_actions -set true] {
 	append result [my draw_transition $s [self]::$a ""]
+	set drawn([self]::$a) 1
       }
       foreach role [$s set handled_roles] {
         set role_ctx [self]-$role
@@ -370,6 +388,18 @@ namespace eval ::xowf {
 	    append result [my draw_transition $s ${role_ctx}::$a "$role:"]
 	  }
         }
+      }
+    }
+    #
+    # State-safe actions might be called from every state. Draw the
+    # arcs if not done yet.
+    #
+    foreach action [my defined Action] {
+      if {[info exists drawn($action)]} {continue}
+      if {[$action state_safe]} {
+	foreach s [my defined State] {
+	  append result [my draw_transition $s $action ""]
+	}
       }
     }
 
@@ -1225,17 +1255,22 @@ namespace eval ::xowf {
       #
       set ctx [::xowf::Context require [self]]
       foreach p [$ctx defined ::xowiki::formfield::FormField] {
-        set __ia([$p name]) [$p default]
-        set f([$p name]) $p
+	set name [$p name]
+	set value [$p default]
+	if {[::xo::cc exists_query_parameter $name]} {
+	  # never clobber instance attributes from query parameters blindly
+	  #my msg "ignore $name"
+	  continue
+	}
+	if {[::xo::cc exists_query_parameter p.$name] 
+	    && [$p exists allow_query_parameter]} {
+	  # we allow the value to be taken from the query parameter
+	  set value [::xo::cc query_parameter p.$name]
+	}
+        set __ia($name) $value
+        set f($name) $p
       }
-      foreach {qp_name value} [::xo::cc get_all_query_parameter] {
-        if {[regexp {^p.(.+)$} $qp_name _ name] 
-            && [info exists f($name)] 
-            && [$f($name) exists allow_query_parameter]
-          } {
-          set __ia($name) $value
-        }
-      }
+
       # save instance attributes
       set instance_attributes [array get __ia]
       #my msg "[self] [my name] setting default parameter"
