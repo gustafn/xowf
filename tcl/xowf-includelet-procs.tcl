@@ -3,7 +3,6 @@
 
   @author Gustaf Neumann
   @creation-date 2008-03-05
-  @cvs-id $Id $
 }
 
 ::xo::db::require package xowiki
