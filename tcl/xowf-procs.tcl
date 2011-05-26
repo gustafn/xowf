@@ -583,6 +583,8 @@ namespace eval ::xowf {
     {form_loader ""}
     {form_constraints ""}
     {assigned_to}
+    {extra_js ""}
+    {extra_css ""}
   }
 
   State instproc get_actions {{-set false}} {
@@ -868,6 +870,11 @@ namespace eval ::xowf {
     if {[my is_wf_instance] && $content eq ""} {
       set ctx [::xowf::Context require [self]]
       set method [$ctx get_view_method]
+      
+      set currentStateObj [$ctx current_state]
+      set css [$currentStateObj extra_css]
+      set js  [$currentStateObj extra_js]
+      my include_header_info -css $css -js $js
 
       if {$method ne "" && $method ne "view"} {
         my instvar package_id
