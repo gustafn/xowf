@@ -881,6 +881,8 @@ namespace eval ::xowf {
   WorkflowPage ad_instproc edit args {
     Hook for editing workflow pages
   } {
+    set s [$ctx current_state]
+    my include_header_info -css [$s extra_css] -js [$s extra_js]
     next
   }
 
@@ -899,12 +901,9 @@ namespace eval ::xowf {
 
     if {[my is_wf_instance] && $content eq ""} {
       set ctx [::xowf::Context require [self]]
-      set method [$ctx get_view_method]
-      
-      set currentStateObj [$ctx current_state]
-      set css [$currentStateObj extra_css]
-      set js  [$currentStateObj extra_js]
-      my include_header_info -css $css -js $js
+      set method [$ctx get_view_method]    
+      set s [$ctx current_state]
+      my include_header_info -css [$s extra_css] -js [$s extra_js]
 
       if {$method ne "" && $method ne "view"} {
         my instvar package_id
