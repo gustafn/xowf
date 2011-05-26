@@ -881,6 +881,7 @@ namespace eval ::xowf {
   WorkflowPage ad_instproc edit args {
     Hook for editing workflow pages
   } {
+    set ctx [::xowf::Context require [self]]
     set s [$ctx current_state]
     my include_header_info -css [$s extra_css] -js [$s extra_js]
     next
