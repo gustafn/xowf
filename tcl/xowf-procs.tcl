@@ -246,13 +246,16 @@ namespace eval ::xowf {
       $ctx set_current_state $state
       
       if {[info command [$ctx current_state]] eq ""} {
-	# The state was like deleted from the workflow definition, but
-	# the workflow instance does still need it. We complain an
+	# The state was probably deleted from the workflow definition,
+	# but the workflow instance does still need it. We complain an
 	# reset the state to initial, which should be always present.
 	$obj msg "Workflow instance [$obj name] is in an undefined state $state, reset to initial"
 	set state initial
 	$ctx set_current_state $state
       }
+
+      set stateObj [$ctx current_state]
+      $stateObj eval [$stateObj eval_when_active]
 
       # set the embedded context to the workflow context, 
       # used e.g. by "behavior" of form-fields
@@ -516,6 +519,7 @@ namespace eval ::xowf {
   WorkflowConstruct instforward property         {%[my info parent] object} %proc
   WorkflowConstruct instforward set_property     {%[my info parent] object} %proc
   WorkflowConstruct instforward set_new_property {%[my info parent] object} set_property -new 1
+  WorkflowConstruct instforward object           {%my info parent} object
 
   WorkflowConstruct instproc in_role {role configuration} {
     set ctx [my info parent]
@@ -613,6 +617,7 @@ namespace eval ::xowf {
     {form_loader ""}
     {form_constraints ""}
     {assigned_to}
+    {eval_when_active ""}
     {extra_js ""}
     {extra_css ""}
   }
