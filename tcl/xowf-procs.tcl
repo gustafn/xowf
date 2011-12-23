@@ -127,6 +127,19 @@ namespace eval ::xowf {
     return [list form_id $(item_id) name $(prefix):$(stripped_name)]
   }
 
+  Context instproc default_form_loader {form_name} {
+    #my msg "resolving $form_name in state [my current_state] via default form loader"
+    set form_id 0
+    if {$form_name ne ""} {
+      my instvar object
+      array set "" [my resolve_form_name -object $object $form_name]
+      set form_id $(form_id)
+      #my msg ".... object $object ==> id = $form_id"
+    }
+    return $form_id
+  }
+
+
   Context instproc form_object {object} {
     set parent_id [$object parent_id]
     # After this method is activated, the form object of the form of
@@ -147,19 +160,17 @@ namespace eval ::xowf {
 
     # TODO why no procsearch instead of "info methods"?
     if {$loader eq "" || [my info methods $loader] eq ""} {
-      #my msg "resolving [my form] in state [my current_state], init form [[my current_state] form],  [my procsearch form]"
-      set form [[my current_state] form]
-      set form_id 0
-      if {$form ne ""} {
-	array set "" [my resolve_form_name -object $object $form]
-	set form_id $(form_id)
-      }
+      set form_id [my default_form_loader [[my current_state] form]]
     } else {
-      #my msg "using loader for [my form]"
+      #my msg "using custom form loader $loader for [my form]"
       set form_id [my $loader [my form]]
-      #my msg form_id=$form_id
     }
+    #my msg form_id=$form_id
+    set package_id [$object package_id]
 
+    # When no form was found by the form loader ($form_id == 0) we
+    # create a form on the fly. The created form can be influenced by
+    # "auto_form_template" and "auto_form_constraints".
     if {$form_id == 0} {
       set vars [$object array names __ia]
       if {[my exists auto_form_template]} {
@@ -173,7 +184,6 @@ namespace eval ::xowf {
       }
       #my log "USE auto-form template=$template, vars=$vars IA=[$object set instance_attributes], V=[$object info vars] auto [expr {[my exists autoname] ? [my set autoname] : "f"}]"
 
-      set package_id [$object package_id]
       if {[my exists auto_form_constraints]} {
         set fc [my set auto_form_constraints]
       } else {
@@ -188,11 +198,42 @@ namespace eval ::xowf {
                     -text [list $template text/html] \
                     -form_constraints $fc]
     } else {
-      # be sure, to instantiate the form object
+      # Be sure, to instantiate the form object
       if {![my isobject ::$form_id]} {
         ::xo::db::CrClass get_instance_from_db -item_id $form_id
       }
+      #my msg form_id=$form_id,[$form_id info class]
+
       set form_id ::$form_id
+      if {[$form_id info class] eq "::xowiki::Form"} {
+	# The item returned from the form loadeder was a form,
+	# everything is fine.
+      } elseif {[$form_id info class] eq "::xowiki::FormPage"} {
+	# We got an FormPage. This formpage might be already a pseudo
+	# form (containing property "form"). In this case, we are done as well.
+
+	if {[$form_id property form] eq ""} {
+	  # The FormPage contains no form, so try to provide one.  We
+	  # obtain the content by rendering the page_content. In some
+	  # cases it might be more efficient to obtain the content
+	  # from property "_text", but this might lead to unexpected
+	  # cases where the formpage uses _text for partial
+	  # information.
+	  set text [$form_id render_content]
+	  $form_id set_property -new 1 form "<form>$text</form>"
+	  #my msg "_text=[$form_id property _text]"
+	}
+      } elseif {[$form_id info class] eq "::xowiki::Page"} {
+	#my msg "creating form"
+	set form_id [::xowiki::Form new -destroy_on_cleanup \
+			 -package_id $package_id \
+			 -parent_id [$package_id folder_id] \
+			 -name "Auto-Form" \
+			 -anon_instances [expr {[my exists autoname] ? [my set autoname] : "f"}] \
+			 -form "<form>[$form_id get_html_from_content [$form_id text]]</form>" \
+			 -text "" \
+			 -form_constraints ""]
+      }
     }
     my set form_id $form_id
   }

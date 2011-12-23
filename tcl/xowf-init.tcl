@@ -1,3 +1,4 @@
+if {[info command ::ns_cache_eval] eq ""} {proc ::ns_cache_eval {args} {::ns_cache eval {*}$args}}
 # register the dav interface for the todos
 ::xowf::dav-todo register
 
