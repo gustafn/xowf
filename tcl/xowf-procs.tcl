@@ -1020,15 +1020,15 @@ namespace eval ::xowf {
                       -description "Workflow instance of workflow $wf_name [my description]"]
       $items configure -prodid "-//WU Wien//NONSGML XoWiki Content Flow//EN" -method request
       set ical [$items as_ical]
-       lappend tokens [mime::initialize \
-                           -canonical text/calendar \
-                           -param [list method request] \
-                           -param [list charset UTF-8] \
-                           -header [list "Content-Disposition" "attachment; filename=\"todo.vcs\""] \
-                           -encoding "quoted-printable" -string $ical]
+      lappend tokens [mime::initialize \
+			  -canonical text/calendar \
+			  -param [list method request] \
+			  -param [list charset UTF-8] \
+			  -header [list "Content-Disposition" "attachment; filename=\"todo.vcs\""] \
+			  -encoding "quoted-printable" -string $ical]
       lappend tokens [mime::initialize \
                           -canonical application/ics -param [list name "invite.ics"] \
-                           -header [list "Content-Disposition" "attachment; filename=\"todo.ics\""] \
+			  -header [list "Content-Disposition" "attachment; filename=\"todo.ics\""] \
                           -encoding "quoted-printable" -string $ical]
       #lappend tokens [acs_mail_lite::utils::build_body -mime_type {application/ics; name="invite.ics"} $ical]
     }
