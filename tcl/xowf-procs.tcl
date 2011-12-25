@@ -1184,7 +1184,7 @@ namespace eval ::xowf {
   }
 
   WorkflowPage instproc double_quote {value} {
-    if {[regexp {[ ,\"\\=>]} $value]} {
+    if {[regexp {[ ,\"\\=>\n\']} $value]} {
       set value \"[string map [list \" \\\\\" \\ \\\\ ' ''] $value]\"
     }
     return $value
