@@ -1009,11 +1009,11 @@ namespace eval ::xowf {
 
     if {$with_ical} {
       set items [::xo::OrderedComposite new -destroy_on_cleanup -mixin ::xo::ical::VCALENDAR]
-      # hmm, mozilla just supports VEVENT, but changing the VTODO below into a VEVENT
-      # does not seem to help either....
-      $items add [::xo::ical::VTODO new \
+      # hmm, mozilla just supports VEVENT, a VTODO would be nice.
+      $items add [::xo::ical::VEVENT new \
                       -creation_date [my set creation_date] \
                       -last_modified [my last_modified] \
+                      -dtstart "now" \
                       -uid $package_id-[my revision_id] \
                       -url [my pretty_link -absolute true] \
                       -summary $subject \
@@ -1043,7 +1043,11 @@ namespace eval ::xowf {
 	[list To $to_info(email)] \
 	[list Subject $subject]
 
-    acs_mail_lite::smtp -multi_token $tokens -headers $headers_list
+    set originator [acs_mail_lite::bounce_address -user_id $from \
+			-package_id $package_id \
+			-message_id $message_id]
+
+    acs_mail_lite::smtp -multi_token $tokens -headers $headers_list -originator $originator
     mime::finalize $tokens -subordinates all
     
   }
