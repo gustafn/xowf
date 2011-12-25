@@ -1052,14 +1052,14 @@ namespace eval ::xowf {
     
   }
 
-  WorkflowPage instproc activate {ctx action} {
+  WorkflowPage instproc activate {{-verbose true} ctx action} {
     # Execute action and compute next state
     # of action.
     set action_command ${ctx}::$action
     # Check, if action is defined
     if {[info command $action_command] eq ""} {
       # no such action the current context
-      ns_log notice "Warning: [my name] No action $action in workflow context"
+      if {$verbose} {ns_log notice "Warning: [my name] No action $action in workflow context"}
       return ""
     }
     #set next_state [$action_command get_next_state]
@@ -1294,7 +1294,7 @@ namespace eval ::xowf {
       # Get context and call user defined "constructor"
       #
       set ctx [::xowf::Context require [self]]
-      my activate $ctx initialize
+      my activate -verbose false $ctx initialize
 
       # Ignore the returned next_state, since the initial state is
       # always set to the same value from the ctx (initial)
