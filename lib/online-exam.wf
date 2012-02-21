@@ -1,3 +1,4 @@
+# -*- Tcl -*-
 ########################################################################
 # Online-Exam workflow, designed similar to mobile-clicker
 #
@@ -232,10 +233,10 @@ my proc get_answer_wf {obj} {
 ########################################################################
 # get_wf_instances: return the workflow instances
 #
-my proc get_wf_instances {wf} {
+my proc get_wf_instances {{-initialize false} wf} {
   return [::xowiki::FormPage get_form_entries \
 	      -base_item_ids [$wf item_id] -form_fields "" \
-	      -always_queried_attributes "*" -initialize false \
+	      -always_queried_attributes "*" -initialize $initialize \
 	      -publish_status all -package_id [$wf package_id]]
 }
 
@@ -245,7 +246,7 @@ my proc get_wf_instances {wf} {
 my proc delete_all_answer_data {obj} {
   set wf [my get_answer_wf $obj]
   if {$wf ne ""} {
-    set items [my get_wf_instances $wf]
+    set items [my get_wf_instances -initialize false $wf]
     foreach i [$items children] { $i delete }
   }
   return $wf
@@ -298,9 +299,6 @@ Action instproc unpublish_link {obj} {
       set pretty_date [clock format [clock scan $time] -format "%Y-%m-%d %T"]
       set uid [$i property _creation_user]
       set text "<h2>[acs_user::get_element -user_id $uid -element username] / [::xo::get_user_name $uid] / $pretty_date</h2>" 
-      $i initialize
-      set iCtx [::xowf::Context require $i]
-      $iCtx set_current_state done 
       append HTML "<div class='testscript'><h1>[$i title]</h1>$text[$i render_content]</div>"
     }
   }
