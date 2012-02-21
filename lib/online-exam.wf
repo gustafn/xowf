@@ -307,7 +307,7 @@ Action instproc unpublish_link {obj} {
   if {$HTML ne ""} {
     ns_return 200 text/html $HTML
   } else {
-    util_user_message -html -message "No answer data available [::xo::cc info vars]"
+    util_user_message -html -message "No answer data available"
     ad_returnredirect [::xo::cc url]
   }
 }
