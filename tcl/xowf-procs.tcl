@@ -1370,7 +1370,7 @@ namespace eval ::xowf {
     set wf_specific_constraints [[my page_template] property form_constraints]
     set m [my merge_constraints $wf_specific_constraints \
                $constraints_from_form [$ctx get_form_constraints]]
-    #my msg merged:$m
+    #my msg "merged:$m"
     return $m
   }
   WorkflowPage instproc wf_merged_form_constraints {constraints_from_form} {
@@ -1392,13 +1392,13 @@ namespace eval ::xowf {
 
   WorkflowPage instproc get_form_constraints {{-trylocal false}} {
     if {[my istype ::xowiki::FormPage] && [my is_wf]} {
-      #my msg "is_wf"
+      #my msg "get_form_constraints is_wf"
       return [::xo::cc cache [list [self] wf_merged_form_constraints [next]]]
     } elseif {[my istype ::xowiki::FormPage] && [my is_wf_instance]} {
-      #my msg "is_wf_instance"
+      #my msg "get_form_constraints is_wf_instance"
       return [::xo::cc cache [list [self] wfi_merged_form_constraints [next]]]
     } else {
-      #my msg "next"
+      #my msg "get_form_constraints next"
       next
     }
   }
@@ -1514,7 +1514,10 @@ namespace eval ::xowf {
     }
   }
 
-  WorkflowPage instproc call_action_foreach {-action:required {-attributes ""} page_names} {
+  WorkflowPage ad_instproc call_action_foreach {-action:required {-attributes ""} page_names} {
+    Call the specified action for each of the specified pages denoted
+    by the list of page names
+  } {
     foreach page_name $page_names {
       set page [[my package_id] get_page_from_name -parent_id [my parent_id] -name $page_name]
       if {$page ne ""} {
@@ -1741,6 +1744,31 @@ namespace eval ::xowf {
 #     set uri /xowf/18205
 #     my call_action -uri $uri -action work -attributes [list comment hello3 effort 4]
 #   }
+
+  proc include {wfName {vars ""}} {
+    uplevel [list eval [::xowf::include_get -level 2 $wfName $vars]]
+  }
+
+  ad_proc include_get {{-level 1} wfName {vars ""}} {
+    if {![string match "/packages/*/lib/*" $wfName]} {
+      error "path leading to workflow name must look likw /packages/*/lib/*"
+    }
+    set fname [get_server_root]$wfName
+
+    if {![file readable $fname]} {
+      error "file '$fname' not found"
+    }
+    set f [open $fname]; set wfDefinition [read $f]; close $f
+    #::xotcl::Object log "INCLUDE $wfName [list $vars]"
+    if {[llength $vars] > 0} {
+      foreach var $vars {
+	lappend substMap @$var@ [uplevel $level [list set $var]]
+      }
+      set wfDefinition [string map $substMap $wfDefinition]
+    }
+    #::xotcl::Object log "AFTER SUBST $wfName [list $vars]\n$wfDefinition"
+    return [list eval $wfDefinition]
+  }
 
 }
 
