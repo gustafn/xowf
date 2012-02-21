@@ -1,0 +1,271 @@
+# -*- Tcl -*-
+# 
+# Workflow template for answering online exams. The workflow is
+# typically controlled from a parent workflow that a teacher can use
+# to create the exam, to try it out and to publish it
+# (oneline-exam.wf).
+#
+# This workflow is similar to the classical "iterate.wf" but is more
+# configurable (the answer forms are passed via template
+# variables). The workflow uses a form-loader which renames the input
+# fields to avoid potential name clashes.
+#
+# Template variables:
+#  @wfTitle@
+#  @wfQuestionNames@
+#  @wfID@
+
+
+my set autoname 1
+my set debug 1
+
+set object [my set object]
+set package_id [$object package_id]
+set pages [list @wfQuestionNames@]
+
+########################################################################
+#
+# Properties
+#
+# pages: the form pages used as inout forms
+# position: the current page in the exam
+# return_url: when the exam is finished, the user proceeds to this url
+# try_out_mode: a teacher can try the exam in this mode
+# current_form: used internally to keep the current form 
+# ip: ip address of the user, kept in the instance attribute as record
+#
+########################################################################
+
+Property pages -default $pages
+Property position -default 0 -allow_query_parameter true
+Property return_url -default "" -allow_query_parameter true
+Property try_out_mode -default 0 -allow_query_parameter true
+Property current_form -default ""
+Property ip -default [expr {[ns_conn isconnected] ? [ad_conn peeraddr] : "nowhere"}]
+
+Condition more_ahead \
+    -expr {[my property position] < [llength [my property pages]]-1}
+
+Condition more_before \
+    -expr {[my property position] > 0}
+
+########################################################################
+#
+# Action definitions
+#
+########################################################################
+
+Action allocate -proc activate {obj} {
+  #my msg "allocate $obj"
+  # Called, when we try to create or use a workflow instance
+  # via a workflow definition ($obj is a workflow definition) 
+  my set_new_property name ___[::xo::cc set untrusted_user_id]
+}
+
+Action initialize -proc activate {obj} {
+  # called, after workflow instance was created
+
+  my set_new_property _title "@wfTitle@"
+  set parent_id [$obj parent_id]
+  set package_id [$obj package_id]
+
+  # make sure to create the parent (the controlling workflow)
+  ::xo::db::CrClass  get_instance_from_db -item_id $parent_id
+  set parent_state [$parent_id state]
+
+  #
+  # Don't allow to enter values when the state of the master workflow
+  # is not published (e.g. trial mode, or closed) or when try-out-mode
+  # is not set
+  #
+  if {$parent_state ne "published" && [my property try_out_mode 0] == 0} {
+    #my msg "LOCKED"
+    set current_state [my property _state]
+    set lockin_state [expr {$current_state eq "initial" ? "initial" : "done"}]
+    set lockin_msg(initial) "Die Prüfung ist von der Aufsicht nicht freigegeben!"
+    set lockin_msg(done) "Die Prüfungszeit ist abgelaufen!"
+    foreach a [Action info instances] {
+      if {[namespace tail $a] eq "logout"} continue
+      $a next_state $lockin_state
+      $a proc activate {obj} [list util_user_message -message $lockin_msg($lockin_state)]
+      $a set_property position 0
+      $a set_property current_form ""
+    }
+  } else {
+    #my msg "not LOCKED"
+  }  
+}
+
+Action instproc set_page {increment} {
+  set pages [my property pages]
+  set position [my property position 0]
+  incr position $increment 
+  if {$position < 0} {
+    set position 0
+  } elseif {$position >= [llength $pages]} {
+    set position [expr {[llength $pages] - 1}]
+  }
+  my set_property position $position
+  my set_property current_form [lindex $pages $position]
+}
+
+Action prev \
+    -next_state working \
+    -label "Vorherige Frage" \
+    -proc activate {obj} {my set_page -1}
+
+Action next \
+    -next_state working \
+    -label "Nächste Frage" \
+    -proc activate {obj} {my set_page 1}
+
+Action abgabe \
+    -next_state done \
+    -label "Abgabe"
+
+Action save \
+    -label "Antwort zwischenspeichern"
+
+Action logout \
+    -label "Prüfung verlassen" \
+    -proc activate {obj} {
+      set pid [$obj package_id]
+      set try_out_mode [my property try_out_mode 0]
+      set return_url [my property return_url .]
+      #my msg "tryout $try_out_mode return_url $return_url"
+      if {$try_out_mode} {
+	ad_returnredirect $return_url
+      } else {
+	::xo::cc set_parameter return_url /register/logout?return_url=$return_url
+      }
+    }
+
+Action start \
+    -next_state working \
+    -label Beginnen \
+    -proc activate {obj} {
+      my set_property position 0
+      my set_property current_form [lindex [my property pages] 0]
+    }
+
+Action start_again \
+    -label "Erste Frage" \
+    -next_state working -proc activate {obj} {
+      my set_property position 0
+      my set_property current_form [lindex [my property pages] 0]
+    }
+
+########################################################################
+#
+# State definitions
+#
+########################################################################
+
+State parameter { {view_method edit} 
+  {extra_js {
+    /resources/xowiki/jquery/jquery.js
+    ../file:seal.js?m=download
+  }}
+  {extra_css {
+    ../file:seal.js?m=download
+  }}}
+
+State working -form [my property current_form] 
+working proc actions {} {
+  set actions ""
+  if {[more_before]} {lappend actions prev}
+  if {[more_ahead]} {lappend actions next}
+  lappend actions save abgabe
+}
+
+State initial \
+    -actions {start logout} \
+    -form "../en:exam-start"
+
+State done \
+    -actions {start_again logout} \
+    -form "../en:exam-done" \
+    -form_loader summary_form
+
+
+########################################################################
+#
+# Helper methods for the workflow context
+#
+########################################################################
+
+#
+# Overload default form loader to rename the input fields
+# to avoid name clashes
+#
+my proc default_form_loader {form_name} {
+  #my msg "renaming_form_loader $form_name"
+  set form_id [next]
+  ::xo::db::CrClass get_instance_from_db -item_id $form_id
+
+  set form [$form_id get_property -name form]
+  set prefix [lindex [split [$form_id name] :] end]-a
+  set counter 0
+  set fc [my get_form_constraints]
+  dom parse -simple -html $form doc
+  $doc documentElement root
+  if {$root ne ""} {
+    foreach node [$root selectNodes "//textarea|//input"] {
+      set newName $prefix[incr counter]
+      $node setAttribute name $newName
+      #lappend fc $newName:richtext,editor=xinha,slim=true
+    }
+    $form_id set_property form [$root asHTML]
+  }
+  # Currently, the computation and setting of the form_constraints has
+  # no effect, when the input field is provided raw in the form
+  # (e.g. as a handcoded textarea). We set it anyhow here for future
+  # use
+  $form_id set_property -new 1 form_constraints $fc
+  my set_title -question 1
+  return $form_id
+}
+
+#
+# set title with question and user information
+#
+my proc set_title {{-question 1}} {
+  set t [list ]
+  set object [my object]
+  if {$question} {lappend title "Frage [expr {[my property position] + 1}]"}
+  lappend title \
+      "@wfTitle@" \
+      "IP: [$object property ip]" 
+
+  $object title [join $title " / "]
+}
+
+#
+# Form loader for summary
+#
+my proc summary_form {form_title} {
+  #my msg "summary_form_loader $form_title"
+
+  my set_title -question 0
+  set state [my property _state]
+
+  set summary_form ""
+  set counter 0
+  foreach form_name [my property pages] {
+    set form_id [my default_form_loader $form_name]
+    append summary_form <h3>Frage [incr counter]</h3> \n
+    append summary_form [$form_id property form] \n<hr>\n
+  }
+  
+  # disable all input fields and remove wrapping form
+  regsub -all {<textarea } $summary_form {<textarea disabled='disabled' } summary_form 
+  regsub -all {<input } $summary_form {<input disabled='disabled' } summary_form 
+  regsub -all {</?form[^>]*>} $summary_form {} summary_form
+
+  return [::xowiki::Form new \
+	     -set name en:summary \
+	      -form [list <form><div>$summary_form</div></form> text/html] \
+	      -text {} \
+	      -anon_instances t \
+	      -form_constraints [list @cr_fields:hidden]]
+}

@@ -1,0 +1,31 @@
+# -*- Tcl -*-
+# 
+# Simple clicker answer workflow template.
+#
+# Template variables:
+#  @wfID@
+#  @wfTitle@
+#  @wfQuestion@
+
+my set autoname 1
+Property return_url -default "" -allow_query_parameter true
+Action allocate -proc activate {obj} {
+  my set_new_property name ___@wfID@.[::xo::cc set untrusted_user_id]
+}
+Action initialize -proc activate {obj} {
+  my set_new_property _title "@wfTitle@"
+}
+Action submit -next_state done
+State initial -actions {submit} -form ../@wfQuestion@ -view_method edit
+State done -form ../de:question45 -eval_when_active {
+  [my object] proc view args {
+    set return_url [my property return_url]
+    if {$return_url ne ""} {
+      ad_returnredirect $return_url
+      ad_script_abort
+    } else {
+      next
+    }
+  }
+}
+if {[::xo::cc mobile]} {::xo::cc set_parameter template_file view-mobile}
