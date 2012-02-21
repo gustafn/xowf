@@ -200,7 +200,6 @@ my proc create_answer_workflow {obj} {
     set wfQuestionNames [list $wfQuestionNames]
     xowf::include /packages/xowf/lib/online-exam-answer.wf [list wfID wfTitle wfQuestionNames]
   }]
-  my log "DEF ($wfName)=$wfDef"
   set attributeNames [join $attributeNames ,]
 
   set WF [::xowiki::Weblog instantiate_forms \

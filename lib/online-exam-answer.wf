@@ -232,7 +232,8 @@ my proc default_form_loader {form_name} {
 my proc set_title {{-question 1}} {
   set t [list ]
   set object [my object]
-  if {$question} {lappend title "Frage [expr {[my property position] + 1}]"}
+  set state [$object state]
+  if {$question && $state eq "working"} {lappend title "Frage [expr {[my property position] + 1}]"}
   lappend title \
       "@wfTitle@" \
       "IP: [$object property ip]" 
