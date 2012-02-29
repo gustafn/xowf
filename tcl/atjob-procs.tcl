@@ -163,6 +163,8 @@ namespace eval ::xowf {
     set op [expr {$with_older ? "<=" : "=" }]
     set ansi_time [my ansi_time [clock seconds]]
 
+
+
     #
     # Get the entries.  The items have to be retrieved bottom up,
     # since the query iterates over all instances. In most situations,
@@ -184,6 +186,7 @@ namespace eval ::xowf {
                       where i.item_id = r.item_id and i.live_revision = r.revision_id 
                       and r.revision_id = t.page_instance_id and o.object_id = i.item_id
                       and i2.item_id = i.parent_id and i2.content_type = '::xowiki::FormPage'
+                      and i2.name = 'en:atjob-form'
                       and r.publish_date $op to_timestamp('$ansi_time','YYYY-MM-DD HH24:MI')
                       and i.publish_status = 'production'
 		      and o.package_id is not null
