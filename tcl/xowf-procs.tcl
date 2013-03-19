@@ -1642,7 +1642,7 @@ namespace eval ::xowf {
     #
     set items [::xowiki::FormPage instantiate_objects \
                    -sql "select * from xowiki_form_pagei bt,cr_items i \
-			where i.parent_id = [$package_id folder_id] and bt.item_id = i.item_id" \
+		        where bt.object_package_id = $package_id and bt.item_id = i.item_id" \
                    -object_class ::xowiki::FormPage]
     set count 0
     foreach i [$items children] {
