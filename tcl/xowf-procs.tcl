@@ -689,6 +689,7 @@ namespace eval ::xowf {
     {next_state ""}
     {roles all}
     {state_safe false}
+    {title}
   }
   Action instproc activate {obj} {;}
   Action instproc get_next_state {} {
@@ -826,6 +827,7 @@ namespace eval ::xowf {
           if {$success} {
             set f [::xowiki::formfield::submit_button new -destroy_on_cleanup \
                        -name __action_[namespace tail $action] -CSSclass $CSSclass]
+	    if {[$action exists title]} {$f title [$action title]}
             #my msg action=$action
             $f value [$action label]
             $f render_input
