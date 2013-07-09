@@ -333,3 +333,4 @@ namespace eval ::xowiki::formfield {
 
 }
 
+::xo::library source_dependent 

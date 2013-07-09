@@ -75,7 +75,7 @@ namespace eval ::xowf {
   # Workflow Context
   #
   
-  Class Context -parameter {
+  Class create Context -parameter {
     {current_state "[self]::initial"} 
     workflow_definition
     object
@@ -278,7 +278,8 @@ namespace eval ::xowf {
   Context proc require {obj} {
     set ctx $obj-wfctx
     if {![my isobject $ctx]} {
-      [self] create $ctx -destroy_on_cleanup -object $obj \
+      set wfContextClass [$obj wf_property workflow_context_class [self]]
+      $wfContextClass create $ctx -destroy_on_cleanup -object $obj \
           -workflow_definition [$obj wf_property workflow_definition]
 
       # set the state to a well defined starting point
@@ -296,7 +297,7 @@ namespace eval ::xowf {
       }
 
       set stateObj [$ctx current_state]
-      $stateObj eval [$stateObj eval_when_active]
+      catch {$stateObj eval [$stateObj eval_when_active]}
 
       # set the embedded context to the workflow context, 
       # used e.g. by "behavior" of form-fields
@@ -344,7 +345,8 @@ namespace eval ::xowf {
     if {$form_loader eq ""} {set form_loader NONE}
 
     $obj debug_msg "State: [$stateObj name], Form: $form,\
-		View method: $view_method, Form loader: $form_loader"
+		View method: $view_method, Form loader: $form_loader,\
+		Context class: [my info class]"
 
     set conds [list]
     foreach c [my defined Condition] {
@@ -549,7 +551,7 @@ namespace eval ::xowf {
   #
   # WorkflowConstruct, the base class for workflow definitions
   #
-  Class WorkflowConstruct -parameter {
+  Class create WorkflowConstruct -parameter {
     {handled_roles [list]}
     {label "[namespace tail [self]]"}
     {name  "[namespace tail [self]]"}
@@ -651,7 +653,7 @@ namespace eval ::xowf {
 
 namespace eval ::xowf {
 
-  Class State -superclass WorkflowConstruct -parameter {
+  Class create State -superclass WorkflowConstruct -parameter {
     {actions ""}
     {view_method ""}
     {form ""}
@@ -674,7 +676,7 @@ namespace eval ::xowf {
     return [my get_value [my actions]]
   }
 
-  Class Condition -superclass WorkflowConstruct -parameter expr
+  Class create Condition -superclass WorkflowConstruct -parameter expr
   Condition instproc init {} {
     [my info parent]::Action instforward [namespace tail [self]] [self]
     [my info parent]::State  instforward [namespace tail [self]] [self]
@@ -685,7 +687,7 @@ namespace eval ::xowf {
   }
 
   #{label "#xowf.form-button-[namespace tail [self]]#"}
-  Class Action -superclass WorkflowConstruct -parameter {
+  Class create Action -superclass WorkflowConstruct -parameter {
     {next_state ""}
     {roles all}
     {state_safe false}
@@ -737,7 +739,7 @@ namespace eval ::xowf {
     return "OK"
   }
 
-  Class Property \
+  Class create Property \
       -superclass ::xowiki::formfield::FormField -parameter {{name "[namespace tail [self]]"}} \
       -parameter {{allow_query_parameter false}}
   Property set abstract 1
@@ -765,7 +767,7 @@ namespace eval ::xowf {
   #
   # MixinClass for implementing the workflow definition and workflow instance
   #
-  Class WorkflowPage
+  Class create WorkflowPage
 
   WorkflowPage ad_instproc is_wf {} {
     Check, if the current page is a workflow page (page, defining a workflow)
@@ -1211,10 +1213,10 @@ namespace eval ::xowf {
                 set hkey = '[join $keys ,]'
                 where page_instance_id = [my revision_id]"
   }
-  WorkflowPage instproc wf_property {name} {
+  WorkflowPage instproc wf_property {name {default ""}} {
     if {[my exists __wf]} {set key __wf($name)} else {set key __wfi($name)}
     if {[my exists $key]} { return [my set $key] }
-    return ""
+    return $default
   }
   WorkflowPage instproc get_template_object {} {
     my instvar page_template
@@ -1587,7 +1589,6 @@ namespace eval ::xowf {
     $j persist
   }
 
-
   ad_proc migrate_from_wf_current_state {} {
     # 
     # Transform the former instance_attributes 
@@ -1774,4 +1775,5 @@ namespace eval ::xowf {
 
 }
 
+::xo::library source_dependent 
 
