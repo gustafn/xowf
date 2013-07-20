@@ -116,6 +116,12 @@ namespace eval ::xo::role {
   registered_user proc is_member {-user_id:required -package_id} {
     return [expr {$user_id != 0}]
   }
+  registered_user proc get_members {-object_id:required} {
+    # return just the users with an @ sign, to avoid the users created by automated testing
+    set members [db_list_of_lists [my qn get_users] \
+		     "select distinct username, user_id from registered_users where username like '%@%'"]
+    return $members
+  }
 
   Role create unregistered_user
   unregistered_user proc is_member {-user_id:required -package_id} {
