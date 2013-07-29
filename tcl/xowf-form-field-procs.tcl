@@ -186,7 +186,10 @@ namespace eval ::xowiki::formfield {
   #
   ###########################################################
 
-  Class role_member -superclass candidate_box_select -parameter {role}
+  Class role_member -superclass candidate_box_select -parameter {
+    role 
+    {online_state off}
+  }
   role_member instproc initialize {} {
     next
     my set is_party_id 1
@@ -206,16 +209,18 @@ namespace eval ::xowiki::formfield {
     }
     next
   }
+
   role_member instproc get_entry_label {v} {
-    return [::xo::get_user_name $v]
+    set prefix ""
+    if {[my online_state]} {
+      set prefix "[::xowiki::utility user_is_active -asHTML true $v] "
+    }
+    return $prefix[::xo::get_user_name $v]
   }
+
   role_member instproc pretty_value {v} {
     my set options [my get_labels $v]
-    #foreach uid $v {
-    #  my lappend options [list $uid [::xo::get_user_name $uid]]
-    #}
     next
-    #return [::xo::get_user_name $v]
   }
 }
 
