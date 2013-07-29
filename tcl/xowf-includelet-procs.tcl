@@ -51,23 +51,33 @@ namespace eval ::xowiki::includelet {
       # The workflow might be of one of the following forms:
       #   name
       #   <language prefix>:name
-      #   //package/name
+      #   /path-in-package/<language prefix>:name
       #   //package/<language prefix>:name
+      #   //package/path-in-package/<language prefix>:name
       #
       # To address all workflow of a package instance, use
       #   //package/
       #
       if {[regexp {^/(/.*)/$} $workflow _ package]} {
+	# all workflows from this package
         ::xowf::Package initialize -url $package
         #my msg "using package_id=$package_id"
         append sql " and o.package_id = :package_id"
       } else {
-        if {[catch {set wf_page [[my set __including_page] resolve_included_page_name $workflow]}]} {
+	if {[regexp {^/(/[^/]+)(/.+)$} $workflow _ package path]} {
+	  ::xowf::Package initialize -url $package
+	  #my msg "using package_id=$package_id"
+	} else {
+	  set path $workflow
+	}
+	set parent_id [[my set __including_page] parent_id]
+	set wf_page [$package_id get_page_from_item_ref -parent_id $parent_id $path]
+        if {$wf_page eq ""} {
+	  my msg "cannot resolve page $workflow"
           set package_id -1; set page_template -1
         } else {
           set page_template [$wf_page item_id]
           set package_id [$wf_page package_id]
-          my msg "could not find workflow $workflow"
         }
         #my msg "page_template=$page_template pkg=$package_id"
         append sql " and o.package_id = :package_id and p.page_template = :page_template"
