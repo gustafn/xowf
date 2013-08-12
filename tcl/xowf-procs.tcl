@@ -577,7 +577,7 @@ namespace eval ::xowf {
     my lappend handled_roles $role
     $ctx set handled_roles($role) 1
     if {$success} {
-      eval my configure $configuration
+      my configure {*}$configuration
     }
   }
 #   WorkflowConstruct instproc get_condition {conditional_entry} {
@@ -1749,7 +1749,7 @@ namespace eval ::xowf {
 #   }
 
   proc include {wfName {vars ""}} {
-    uplevel [list eval [::xowf::include_get -level 2 $wfName $vars]]
+    uplevel [list [::xowf::include_get -level 2 $wfName {*}$vars]]
   }
 
   ad_proc include_get {{-level 1} wfName {vars ""}} {
