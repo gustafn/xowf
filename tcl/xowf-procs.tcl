@@ -1091,7 +1091,7 @@ namespace eval ::xowf {
 
   WorkflowPage instproc get_form_data args {
     if {[my is_wf_instance]} {
-      foreach {validation_errors category_ids} [next] break
+      lassign [next] validation_errors category_ids
       if {$validation_errors == 0} {
         #my msg "validation ok"
         set cc [[my package_id] context]
@@ -1121,7 +1121,7 @@ namespace eval ::xowf {
     #  - obtain the field_names from the current form, to
     #  - create form_field instances from that and to
     #  - provide the values from the instance attributes into it.
-    foreach {_ field_names} [my field_names_from_form] break
+    lassign [my field_names_from_form] _ field_names
     set form_fields [my create_form_fields $field_names]
     my load_values_into_form_fields $form_fields
     return $form_fields
@@ -1602,7 +1602,7 @@ namespace eval ::xowf {
       where r.item_id = i.item_id and p.xowiki_form_page_id = r.revision_id and
       pi.page_instance_id = r.revision_id
     }] {
-      foreach {state assignee instance_attributes xowiki_form_page_id} $atts break
+      lassign $atts state assignee instance_attributes xowiki_form_page_id
       array unset __ia
       array set __ia $instance_attributes
       if {[info exists __ia(wf_current_state)] && 
