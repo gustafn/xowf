@@ -80,6 +80,7 @@ namespace eval ::xowf {
     workflow_definition
     object
     {all_roles false}
+    {default_definition ""}
     in_role
   }
   
@@ -254,6 +255,7 @@ namespace eval ::xowf {
        Class create State    -superclass  ::xowf::State
        Class create Condition -superclass ::xowf::Condition
        Class create Property -superclass  ::xowf::Property -set abstract 1
+       [my default_definition]
        $workflow_definition"} errorMsg]} {
       my msg "Error in workflow definition: $errorMsg"
       #my msg [[my object] instance_attributes]
