@@ -289,7 +289,7 @@ namespace eval ::xowf {
       if {$state eq ""} {set state initial}
       $ctx set_current_state $state
       
-      if {[info command [$ctx current_state]] eq ""} {
+      if {[info commands [$ctx current_state]] eq ""} {
 	# The state was probably deleted from the workflow definition,
 	# but the workflow instance does still need it. We complain an
 	# reset the state to initial, which should be always present.
@@ -409,7 +409,7 @@ namespace eval ::xowf {
     foreach s [my defined State] {
       if {[$s name] eq $current_state} {
         set color ",color=orange"
-      } elseif {[lsearch -exact $visited [$s name]] > -1} {
+      } elseif {[$s name] in $visited} {
         set color ",color=yellow"
       } else {
         set color ""
@@ -1063,7 +1063,7 @@ namespace eval ::xowf {
     # of action.
     set action_command ${ctx}::$action
     # Check, if action is defined
-    if {[info command $action_command] eq ""} {
+    if {[info commands $action_command] eq ""} {
       # no such action the current context
       if {$verbose} {ns_log notice "Warning: [my name] No action $action in workflow context"}
       return ""
@@ -1554,7 +1554,7 @@ namespace eval ::xowf {
       }
     }
     set a  ${ctx}::$action
-    if {[info command $a] ne "" && [$a state_safe]} {
+    if {[info commands $a] ne "" && [$a state_safe]} {
       # The action is defined as state-safe, so if can be called in every state
       my log  "--xowf action $action state_safe -- name='[my name]'"
       return [$a invoke -attributes $attributes]
@@ -1607,16 +1607,15 @@ namespace eval ::xowf {
       lassign $atts state assignee instance_attributes xowiki_form_page_id
       array unset __ia
       array set __ia $instance_attributes
-      if {[info exists __ia(wf_current_state)] && 
-          $__ia(wf_current_state) ne $state} {
+      if {[info exists __ia(wf_current_state)] 
+	  && $__ia(wf_current_state) ne $state} {
         #Object msg "must update state $state for $xowiki_form_page_id to  $__ia(wf_current_state) "
         db_dml dbqd..update_state "update xowiki_form_page \
                 set state = '$__ia(wf_current_state)'
                 where xowiki_form_page_id  = $xowiki_form_page_id" 
         incr count
       }
-      if {[info exists __ia(wf_assignee)] && 
-          $__ia(wf_assignee) ne $assignee} {
+      if {[info exists __ia(wf_assignee)] && $__ia(wf_assignee) ne $assignee} {
         #Object msg "must update assignee $assignee for $xowiki_form_page_id to  $__ia(wf_assignee) "
         db_dml dbqd..update_state "update xowiki_form_page \
                 set assignee = '$__ia(wf_assignee)'

@@ -162,7 +162,7 @@ namespace eval ::xo::role {
 
   Role create community_member
   community_member proc is_member {-user_id:required -package_id} {
-    if {[info command ::dotlrn_community::get_community_id] ne ""} {
+    if {[info commands ::dotlrn_community::get_community_id] ne ""} {
       set community_id [my cache [list [dotlrn_community::get_community_id -package_id $package_id]]]
       if {$community_id ne ""} {
         return [my cache [list dotlrn::user_is_community_member_p \
@@ -197,7 +197,7 @@ namespace eval ::xowiki::formfield {
   role_member instproc render_input {} {
     my instvar role
     #my msg role=$role,obj=[my object]
-    if {[info command ::xo::role::$role] ne ""} {
+    if {[info commands ::xo::role::$role] ne ""} {
       set object_id [::xo::role::$role get_object_id [my object]]
       my set options [::xo::role::$role get_members -object_id $object_id]
     } elseif {[set gid [group::get_id -group_name $role]] ne ""} {

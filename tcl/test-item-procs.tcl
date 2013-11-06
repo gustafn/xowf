@@ -425,10 +425,10 @@ namespace eval ::xowiki::formfield {
         if {[regexp {^([^:]+):(.*)$} $f _ field_name definition]} {
 	  if {[string match @* $field_name]} continue
           # keep all form-constraints for which we have altered the name
-	  #my msg "old fc=$f, [list lsearch $alt_inputs $field_name] => [lsearch $alt_inputs $field_name] $alt_values"
+	  #my msg "old fc=$f, [list lsearch -exact $alt_inputs $field_name] => [lsearch -exact $alt_inputs $field_name] $alt_values"
 	  set ff [[my object] create_raw_form_field -name $field_name -spec $definition]
 	  #my msg "ff answer => '[$ff answer]'"
-          if {[lsearch $alt_inputs $field_name] > -1} {
+          if {$field_name in $alt_inputs} {
 	    lappend fc $prefix-$f
 	  } elseif {[$ff exists answer] && $field_name eq [$ff answer]} {
 	    # this rules is for single choice
