@@ -198,14 +198,13 @@ namespace eval ::xowf {
       #my log "--at *** job=[$item serialize] ***\n"
       set owner_id [$item parent_id]
       set party_id [$item creation_user]
-      array unset __ia
-      array set __ia [$item instance_attributes]
-      if {![info exists __ia(cmd)]} {
+      set __ia [$item instance_attributes]
+      if {![dict exists $__ia cmd]} {
         #ns_log notice "--at ignore strange entry [$item serialize]"
         ns_log notice "--at ignore strange entry, no cmd in [$item instance_attributes]"
         continue
       }
-      set cmd $__ia(cmd)
+      set cmd [dict get $__ia cmd]
 
       # We assume, the owner object is a cr-item
       ::xo::db::CrClass get_instance_from_db -item_id $owner_id

@@ -9,13 +9,13 @@
     <implements-subsite-p>f</implements-subsite-p>
     <inherit-templates-p>t</inherit-templates-p>
     
-    <version name="0.34" url="http://openacs.org/repository/download/apm/xowf-0.34.apm">
+    <version name="0.35" url="http://openacs.org/repository/download/apm/xowf-0.35.apm">
         <owner url="mailto:neumann@wu-wien.ac.at">Gustaf Neumann</owner>
         <release-date>2011-05-16</release-date>
         <maturity>0</maturity>
 
-        <provides url="xowf" version="0.34"/>
-        <requires url="xowiki" version="0.146"/>
+        <provides url="xowf" version="0.35"/>
+        <requires url="xowiki" version="0.148"/>
 
         <callbacks>
         </callbacks>

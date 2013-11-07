@@ -173,7 +173,7 @@ namespace eval ::xowf {
     # create a form on the fly. The created form can be influenced by
     # "auto_form_template" and "auto_form_constraints".
     if {$form_id == 0} {
-      set vars [$object array names __ia]
+      set vars [dict keys [$object set instance_attributes]]
       if {[my exists auto_form_template]} {
         set template [my set auto_form_template]
         my log "USE autoform template"
@@ -753,8 +753,10 @@ namespace eval ::xowf {
     # instance attributes, but provided in the Property definition.
     #
     set object [[my info parent] object]
-    if {[my exists default] && ![$object exists __ia([my name])]} {
-      $object set __ia([my name]) [my default]
+    $object instvar instance_attributes
+    if {[my exists default] && ![dict exists $instance_attributes [my name]]} {
+      #$object set __ia([my name]) [my default]
+      dict set instance_attributes [my name] [my default]
       #my msg "[self] set default of $object to [my default]"
     }
   }
@@ -1167,11 +1169,11 @@ namespace eval ::xowf {
   }
   WorkflowPage instproc save_data args {
     if {[my is_wf_instance]} {
-      array set __ia [my instance_attributes]
+      #array set __ia [my instance_attributes]
       set ctx [::xowf::Context require [self]] 
       my state [$ctx get_current_state]
       #my msg "saving ia: [array get __ia]"
-      my instance_attributes [array get __ia]
+      #my instance_attributes [array get __ia]
       #
       # we have to flag currently storing in hstore here, since
       # saving removes the temporary variables for properties
@@ -1318,6 +1320,7 @@ namespace eval ::xowf {
       # We have a workflow page. Get the initial state of the workflow
       # instance from the workflow.
       #
+      my instvar instance_attributes
       set ctx [::xowf::Context require [self]]
       foreach p [$ctx defined ::xowiki::formfield::FormField] {
 	set name [$p name]
@@ -1332,12 +1335,12 @@ namespace eval ::xowf {
 	  # we allow the value to be taken from the query parameter
 	  set value [::xo::cc query_parameter p.$name]
 	}
-        set __ia($name) $value
+        dict set instance_attributes $name $value
         set f($name) $p
       }
 
-      # save instance attributes
-      set instance_attributes [array get __ia]
+      ## save instance attributes
+      #set instance_attributes [array get __ia]
       #my msg "[self] [my name] setting default parameter"
       #my msg ia=$instance_attributes,props=[$ctx defined Property]
 
@@ -1605,20 +1608,18 @@ namespace eval ::xowf {
       pi.page_instance_id = r.revision_id
     }] {
       lassign $atts state assignee instance_attributes xowiki_form_page_id
-      array unset __ia
-      array set __ia $instance_attributes
-      if {[info exists __ia(wf_current_state)] 
-	  && $__ia(wf_current_state) ne $state} {
-        #Object msg "must update state $state for $xowiki_form_page_id to  $__ia(wf_current_state) "
+      if {[dict exists $instance_attributes wf_current_state] 
+	  && [dict get $instance_attributes wf_current_state] ne $state} {
+        #Object msg "must update state $state for $xowiki_form_page_id to [dict get $instance_attributes wf_current_state]"
         db_dml dbqd..update_state "update xowiki_form_page \
-                set state = '$__ia(wf_current_state)'
+                set state = '[dict get $instance_attributes wf_current_state]'
                 where xowiki_form_page_id  = $xowiki_form_page_id" 
         incr count
       }
-      if {[info exists __ia(wf_assignee)] && $__ia(wf_assignee) ne $assignee} {
-        #Object msg "must update assignee $assignee for $xowiki_form_page_id to  $__ia(wf_assignee) "
+      if {[dict exists $instance_attributes wf_assignee] && [dict get $instance_attributes wf_assignee] ne $assignee} {
+        #Object msg "must update assignee $assignee for $xowiki_form_page_id to [dict get $instance_attributes wf_assignee]"
         db_dml dbqd..update_state "update xowiki_form_page \
-                set assignee = '$__ia(wf_assignee)'
+                set assignee = '[dict get $instance_attributes wf_assignee]'
                 where xowiki_form_page_id  = $xowiki_form_page_id" 
         incr count
       }

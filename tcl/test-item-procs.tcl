@@ -385,20 +385,20 @@ namespace eval ::xowiki::formfield {
       set page [::xo::db::CrClass get_instance_from_db -item_id $item_id]
       append form "<li><h2>[$item_id title]</h2>\n"
       set prefix c$item_id
-      array set __ia [$page set instance_attributes]
+      set __ia [$page set instance_attributes]
       #
       # If for some reason, we have not form entry, we ignore it.
       # TODO: We should deal here with computed forms and with true
       # ::xowiki::forms as well...
       #
-      if {![info exists __ia(form)]} {
+      if {![dict exists $__ia form]} {
         my msg "$v has no form included"
         continue
       }
       #
       # Replace the form-field names in the form
       #
-      dom parse -simple -html $__ia(form) doc
+      dom parse -simple -html [dict get $__ia form] doc
       $doc documentElement root
       set alt_inputs [list]
       set alt_values [list]
@@ -421,7 +421,7 @@ namespace eval ::xowiki::formfield {
       #
       # Replace the formfield names in the form constraints
       #
-      foreach f $__ia(form_constraints) {
+      foreach f [dict get $__ia form_constraints] {
         if {[regexp {^([^:]+):(.*)$} $f _ field_name definition]} {
 	  if {[string match @* $field_name]} continue
           # keep all form-constraints for which we have altered the name
