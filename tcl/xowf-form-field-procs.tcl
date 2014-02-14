@@ -23,15 +23,15 @@ namespace eval ::xowiki::formfield {
   workflow_definition instproc as_graph {} {
     set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
                  -all_roles true -in_role none \
-		 -workflow_definition [my value] ]
+                 -workflow_definition [my value] ]
     return [$ctx as_graph -dpi [my dpi] -style "max-width: 35%;"]
   }
 
   workflow_definition instproc check=workflow {value} {
     # Do we have a syntax error in the workflow definition?
     if {![catch {set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
-                 -all_roles true \
-		 -workflow_definition [my value]]} errorMsg]} {
+                              -all_roles true \
+                              -workflow_definition [my value]]} errorMsg]} {
       unset errorMsg
       array set "" [$ctx check]
       if {$(rc) == 1} {set errorMsg $(errorMsg)}
@@ -48,8 +48,8 @@ namespace eval ::xowiki::formfield {
     [my object] do_substitutions 0
     set text [string map [list & "&amp;" < "&lt;" > "&gt;" \" "&quot;" ' "&apos;" @ "&#64;"] [my value]]
     return "<div style='width: 65%; overflow:auto;float: left;'>
-	<pre class='code'>$text</pre></div>
-	<div float: right;'>[my as_graph]</div><div class='visual-clear'></div>
+    <pre class='code'>$text</pre></div>
+    <div float: right;'>[my as_graph]</div><div class='visual-clear'></div>
         [[my object] include my-refers]
    "
   }
@@ -67,12 +67,12 @@ namespace eval ::xowiki::formfield {
     next
     if {[my as_graph]} {
       set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
-		   -all_roles true -in_role none \
-		   -workflow_definition [[my object] wf_property workflow_definition] ]
+                   -all_roles true -in_role none \
+                   -workflow_definition [[my object] wf_property workflow_definition] ]
       #set ctx   [::xowf::Context require [my object]]
       set graph [$ctx as_graph -current_state [my value] -visited [[my object] visited_states]]
       ::html::div -style "width: 35%; float: right;" {
-	::html::t -disableOutputEscaping $graph
+        ::html::t -disableOutputEscaping $graph
       }
     }
   }
@@ -118,8 +118,8 @@ namespace eval ::xo::role {
   }
   registered_user proc get_members {-object_id:required} {
     # return just the users with an @ sign, to avoid the users created by automated testing
-    set members [db_list_of_lists [my qn get_users] \
-		     "select distinct username, user_id from registered_users where username like '%@%'"]
+    set members [::xo::dc list_of_lists get_users \
+                     "select distinct username, user_id from registered_users where username like '%@%'"]
     return $members
   }
 
@@ -133,9 +133,9 @@ namespace eval ::xo::role {
     return [::xo::cc permission -object_id $package_id -privilege admin -party_id $user_id]
   }
   admin proc get_members {-object_id:required} {
-    set members [db_list_of_lists [my qn get_admins] "select distinct o.title, p.party_id
+    set members [xo::dc list_of_lists get_admins "select distinct o.title, p.party_id
       from acs_object_party_privilege_map p, acs_objects o
-      where p.object_id = $object_id and p.privilege = 'admin' and o.object_id = p.party_id"]
+      where p.object_id = :object_id and p.privilege = 'admin' and o.object_id = p.party_id"]
     #my msg members=$members
     return $members
   }
@@ -147,7 +147,7 @@ namespace eval ::xo::role {
   }
   creator proc get_object_id {object} {return [$object item_id]}
   creator proc get_members {-object_id:required} {
-    set creator_id [db_string [my qn get_owner] "select o.creation_user
+    set creator_id [xo::dc get_value get_owner "select o.creation_user
       from acs_objects o
       where object_id = :object_id"]
     return [list [list [::xo::get_user_name $creator_id] $creator_id]]
@@ -156,8 +156,8 @@ namespace eval ::xo::role {
   Role create app_group_member 
   app_group_member proc is_member {-user_id:required -package_id} {
     return [::xo::cc cache [list application_group::contains_party_p \
-                          -party_id $user_id \
-                          -package_id $package_id]]
+                                -party_id $user_id \
+                                -package_id $package_id]]
   }
 
   Role create community_member
@@ -242,9 +242,9 @@ namespace eval ::xowiki::formfield {
     if {[my set __state] ne "after_specs"} return
     set javascript [::xowiki::formfield::FormField fc_encode { 
       xinha_config.toolbar = [ 
-			      ['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
-			      ['killword','removeformat','htmlmode'] 
-			     ]; 
+                              ['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
+                              ['killword','removeformat','htmlmode'] 
+                             ]; 
     }]
     my instvar feedback inplace
     my create_components  [subst {
@@ -298,7 +298,7 @@ namespace eval ::xowiki::formfield {
     append form "</tbody></table></FORM>\n"
     [my object] set_property -new 1 form $form
     [my object] set_property -new 1 form_constraints $fc
- }
+  }
 
   ###########################################################
   #
@@ -317,10 +317,10 @@ namespace eval ::xowiki::formfield {
 
     if {1} {
       set javascript [::xowiki::formfield::FormField fc_encode { 
-	xinha_config.toolbar = [ 
-				['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
-				['killword','removeformat','htmlmode'] 
-			       ]; 
+        xinha_config.toolbar = [ 
+                                ['popupeditor', 'bold','italic','createlink','insertimage','separator'], 
+                                ['killword','removeformat','htmlmode'] 
+                               ]; 
       }]
       set text_config [subst {editor=xinha,height=100px,label=Text,plugins=OacsFs,inplace=[my inplace],javascript=$javascript}]
     } else {
@@ -328,8 +328,8 @@ namespace eval ::xowiki::formfield {
     }
     if {[my feedback] eq "full"} {
       set feedback_fields {
-	{feedback_correct {textarea,label=Feedback korrekt}}
-	{feedback_incorrect {textarea,label=Feedback inkorrekt}}
+        {feedback_correct {textarea,label=Feedback korrekt}}
+        {feedback_incorrect {textarea,label=Feedback inkorrekt}}
       }
     } else {
       set feedback_fields ""
@@ -345,3 +345,10 @@ namespace eval ::xowiki::formfield {
 }
 
 ::xo::library source_dependent 
+
+#
+# Local variables:
+#    mode: tcl
+#    tcl-indent-level: 2
+#    indent-tabs-mode: nil
+# End:
