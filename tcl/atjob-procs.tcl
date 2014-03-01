@@ -155,42 +155,17 @@ namespace eval ::xowf {
     return $form_id
   }
   
-  atjob proc check {{-with_older false}} {
-    my log "--at START"
-    #
-    # check, if there are jobs scheduled for execution
-    #
-    set op [expr {$with_older ? "<=" : "=" }]
-    set ansi_time [my ansi_time [clock seconds]]
+  atjob proc run_jobs {item_ids} {
+    my log "---run xowf jobs START"
 
-
-
-    #
-    # Get the entries.  The items have to be retrieved bottom up,
-    # since the query iterates over all instances. In most situations,
-    # we fetch the values only for the current time (when with_older
-    # is not set). The entries have to be in state "'production" and
-    # have to have a parent_id that is an ::xowiki::FormPage. This
-    # reduced the number of hits significantly and seems sufficiently
-    # fast.
-    #
-    # To make sure we are not fetching pages from unmounted instances
-    # we check for package_id not null.
-    #
     set items [::xowiki::FormPage instantiate_objects \
-                   -object_class ::xowiki::FormPage \
-                   -sql "
-                      select i.item_id, i.name, i.parent_id, i.publish_status, o.creation_user, 
-                             r.revision_id, page_template,instance_attributes 
-                      from cr_items i, cr_items i2, cr_revisions r, xowiki_page_instance t, acs_objects o
-                      where i.item_id = r.item_id and i.live_revision = r.revision_id 
-                      and r.revision_id = t.page_instance_id and o.object_id = i.item_id
-                      and i2.item_id = i.parent_id and i2.content_type = '::xowiki::FormPage'
-                      and i2.name = 'en:atjob-form'
-                      and r.publish_date $op to_timestamp('$ansi_time','YYYY-MM-DD HH24:MI')
-                      and i.publish_status = 'production'
-		      and o.package_id is not null
-                    " ]
+		   -object_class ::xowiki::FormPage \
+		   -sql "
+      			select i.item_id, i.name, i.parent_id, i.publish_status, o.creation_user, 
+                             r.revision_id, page_template, instance_attributes 
+                      	from cr_items i, xowiki_page_instance t, acs_objects o
+			where i.item_id in ([join $items_ids ,]) and 
+			i.live_revision = t.page_instance_id and o.object_id = i.item_id"]
 
     my log "--at we got [llength [$items children]] scheduled items"
 
@@ -223,6 +198,58 @@ namespace eval ::xowf {
         $item set_live_revision -revision_id [$item revision_id] -publish_status "expired"
       }
     }
+    my log "---run xowf jobs END"
+  }
+
+  atjob proc check {{-with_older false}} {
+    my log "--at START"
+    #
+    # check, if there are jobs scheduled for execution
+    #
+    set op [expr {$with_older ? "<=" : "=" }]
+    set ansi_time [my ansi_time [clock seconds]]
+
+    #
+    # Get the entries.  The items have to be retrieved bottom up,
+    # since the query iterates over all instances. In most situations,
+    # we fetch the values only for the current time (when with_older
+    # is not set). The entries have to be in state "'production" and
+    # have to have a parent_id that is an ::xowiki::FormPage. This
+    # reduced the number of hits significantly and seems sufficiently
+    # fast.
+    #
+    # To make sure we are not fetching pages from unmounted instances
+    # we check for package_id not null.
+    #
+    set item_ids [::xo::dc list get_due_atjobs "
+                      select i.item_id, i.name, i.parent_id, i.publish_status, 
+                             r.revision_id, page_template,instance_attributes 
+                      from cr_items i, cr_items i2, cr_revisions r, xowiki_page_instance t, acs_objects o
+                      where i.item_id = r.item_id and i.live_revision = r.revision_id 
+                      and r.revision_id = t.page_instance_id and o.object_id = i.item_id
+                      and i2.item_id = i.parent_id and i2.content_type = '::xowiki::FormPage'
+                      and i2.name = 'en:atjob-form'
+                      and r.publish_date $op to_timestamp(:ansi_time,'YYYY-MM-DD HH24:MI')
+                      and i.publish_status = 'production'
+		      and o.package_id is not null
+                    " ]
+
+    my log "--at we got [llength $item_ids] scheduled items"
+    
+    #
+    # Running the jobs here in this proc could lead to a problem with
+    # the exact match for the time, when e.g. the jobs take longer
+    # than one minute. Therefore, we collect the jobs ids here but we
+    # execute these in a separate thread via a job queue without
+    # waiting. If the list of jobs gets large, we might consider
+    # splitting the list and run multiple jobs in parallel.
+    #
+    set queue xowfatjobs
+    if {$queue ni [ns_job queues]} {
+        ns_job create $queue
+    }
+    ns_job queue -detached $queue [list ::xowf::atjob run_jobs $item_ids]
+
     my log "--at END"
   }
 
