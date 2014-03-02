@@ -222,8 +222,7 @@ namespace eval ::xowf {
     # we check for package_id not null.
     #
     set item_ids [::xo::dc list get_due_atjobs "
-                      select i.item_id, i.name, i.parent_id, i.publish_status, 
-                             r.revision_id, page_template,instance_attributes 
+                      select i.item_id
                       from cr_items i, cr_items i2, cr_revisions r, xowiki_page_instance t, acs_objects o
                       where i.item_id = r.item_id and i.live_revision = r.revision_id 
                       and r.revision_id = t.page_instance_id and o.object_id = i.item_id
