@@ -144,7 +144,7 @@ namespace eval ::xowf {
     # To make sure we are not fetching pages from unmounted instances
     # we check for package_id not null.
     #
-    set item_ids ::xo::dc list get_due_atjobs "
+    set item_ids [::xo::dc list get_due_atjobs "
                       select i.item_id
                       from cr_items i, cr_items i2, cr_revisions r, xowiki_page_instance t, acs_objects o
                       where i.item_id = r.item_id and i.live_revision = r.revision_id 
