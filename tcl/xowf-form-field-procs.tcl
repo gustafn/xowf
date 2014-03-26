@@ -18,7 +18,7 @@ namespace eval ::xowiki::formfield {
     {rows 20}
     {cols 80}
     {dpi 120}
-  } -extend_slot validator workflow
+  } -extend_slot_default validator workflow
 
   workflow_definition instproc as_graph {} {
     set ctx [::xowf::Context new -destroy_on_cleanup -object [my object] \
