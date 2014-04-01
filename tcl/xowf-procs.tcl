@@ -1752,7 +1752,7 @@ namespace eval ::xowf {
   #   }
 
   proc include {wfName {vars ""}} {
-    uplevel [list [::xowf::include_get -level 2 $wfName {*}$vars]]
+    uplevel [::xowf::include_get -level 2 $wfName {*}$vars]
   }
 
   ad_proc include_get {{-level 1} wfName {vars ""}} {
